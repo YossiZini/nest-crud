@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: Controller</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="walkthrough-service.html">&larr; Service</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="walkthrough-testing.html">Next &rarr;</a>
+  </div>
+
+  <h1>Step 6: The Controller<br><span>items.controller.ts</span></h1>
+  <p>The controller is the HTTP layer. It receives requests, extracts data from them (body, params, query), delegates to the service, and returns the result. Nest handles serializing the return value to JSON and setting the correct status code.</p>
+
+  <div class="file-label">src/items/items.controller.ts</div>
+<pre><span class="kw">import</span> {
+  Controller, Get, Post, Put, Delete,
+  Body, Param, ParseIntPipe,
+} <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { ItemsService } <span class="kw">from</span> <span class="str">'./items.service.js'</span>;
+<span class="kw">import</span> { CreateItemDto } <span class="kw">from</span> <span class="str">'./dto/create-item.dto.js'</span>;
+<span class="kw">import</span> { UpdateItemDto } <span class="kw">from</span> <span class="str">'./dto/update-item.dto.js'</span>;
+
+<span class="dec">@Controller</span>(<span class="str">'items'</span>)
+<span class="kw">export class</span> <span class="fn">ItemsController</span> {
+  <span class="kw">constructor</span>(<span class="kw">private readonly</span> itemsService: ItemsService) {}
+
+  <span class="dec">@Post</span>()
+  <span class="fn">create</span>(<span class="dec">@Body</span>() createItemDto: CreateItemDto) {
+    <span class="kw">return this</span>.itemsService.<span class="fn">create</span>(createItemDto);
+  }
+
+  <span class="dec">@Get</span>()
+  <span class="fn">findAll</span>() {
+    <span class="kw">return this</span>.itemsService.<span class="fn">findAll</span>();
+  }
+
+  <span class="dec">@Get</span>(<span class="str">':id'</span>)
+  <span class="fn">findOne</span>(<span class="dec">@Param</span>(<span class="str">'id'</span>, ParseIntPipe) id: <span class="kw">number</span>) {
+    <span class="kw">return this</span>.itemsService.<span class="fn">findOne</span>(id);
+  }
+
+  <span class="dec">@Put</span>(<span class="str">':id'</span>)
+  <span class="fn">update</span>(
+    <span class="dec">@Param</span>(<span class="str">'id'</span>, ParseIntPipe) id: <span class="kw">number</span>,
+    <span class="dec">@Body</span>() updateItemDto: UpdateItemDto,
+  ) {
+    <span class="kw">return this</span>.itemsService.<span class="fn">update</span>(id, updateItemDto);
+  }
+
+  <span class="dec">@Delete</span>(<span class="str">':id'</span>)
+  <span class="fn">remove</span>(<span class="dec">@Param</span>(<span class="str">'id'</span>, ParseIntPipe) id: <span class="kw">number</span>) {
+    <span class="kw">return this</span>.itemsService.<span class="fn">remove</span>(id);
+  }
+}</pre>
+
+  <h2>The Class Setup</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>@Controller('items') &mdash; the route prefix</strong></p>
+<pre><span class="dec">@Controller</span>(<span class="str">'items'</span>)
+<span class="kw">export class</span> <span class="fn">ItemsController</span> {</pre>
+      <p>The string <code>'items'</code> sets the route prefix for <strong>every method</strong> in this controller. All routes will start with <code>/items</code>.</p>
+      <div class="tip"><strong>Express equivalent:</strong>
+<pre><span class="kw">const</span> router = express.<span class="fn">Router</span>();
+app.<span class="fn">use</span>(<span class="str">'/items'</span>, router);</pre>
+      Same idea &mdash; the prefix is declared once and applies to all routes in the group.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>Constructor injection</strong></p>
+<pre><span class="kw">constructor</span>(<span class="kw">private readonly</span> itemsService: ItemsService) {}</pre>
+      <p>Nest sees that this controller needs an <code>ItemsService</code> and automatically provides it. You never create the service yourself. This is the same DI pattern from the service, but here the controller is the consumer.</p>
+      <p>Because the service is injected (not imported directly), you can swap it with a mock in tests &mdash; which is exactly what we do in the controller tests.</p>
+    </div>
+  </div>
+
+  <h2>The Route Methods</h2>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>POST /items &mdash; Create</strong></p>
+<pre><span class="dec">@Post</span>()
+<span class="fn">create</span>(<span class="dec">@Body</span>() createItemDto: CreateItemDto) {
+  <span class="kw">return this</span>.itemsService.<span class="fn">create</span>(createItemDto);
+}</pre>
+      <p>Let's trace what happens when a client sends <code>POST /items { "name": "Widget" }</code>:</p>
+      <ol>
+        <li>Express receives the request (it's still Express under the hood!)</li>
+        <li><code>@Post()</code> matches the HTTP method and route (<code>/items</code> from the controller prefix + no sub-path)</li>
+        <li><code>@Body()</code> extracts <code>req.body</code> from the Express request</li>
+        <li>The <code>ValidationPipe</code> validates the body against <code>CreateItemDto</code></li>
+        <li>The validated DTO is passed to <code>create()</code></li>
+        <li>The service creates the item and returns a Promise</li>
+        <li>Nest awaits the Promise and sends the result as JSON with status <strong>201</strong> (POST default)</li>
+      </ol>
+      <div class="line-note">Nest automatically returns <strong>201</strong> for POST and <strong>200</strong> for GET/PUT/DELETE. You can override with <code>@HttpCode(204)</code> on the method.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <p><strong>GET /items &mdash; List all</strong></p>
+<pre><span class="dec">@Get</span>()
+<span class="fn">findAll</span>() {
+  <span class="kw">return this</span>.itemsService.<span class="fn">findAll</span>();
+}</pre>
+      <p>The simplest route. No parameters, no body. Just call the service and return the array. Nest serializes the array to JSON automatically.</p>
+      <div class="tip"><strong>Express equivalent:</strong>
+<pre>router.<span class="fn">get</span>(<span class="str">'/'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> items = <span class="kw">await</span> itemsService.<span class="fn">findAll</span>();
+  res.<span class="fn">json</span>(items);
+});</pre>
+      In Nest, you don't call <code>res.json()</code> &mdash; just <code>return</code> the value and Nest handles the response.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <p><strong>GET /items/:id &mdash; Get one (with ParseIntPipe)</strong></p>
+<pre><span class="dec">@Get</span>(<span class="str">':id'</span>)
+<span class="fn">findOne</span>(<span class="dec">@Param</span>(<span class="str">'id'</span>, ParseIntPipe) id: <span class="kw">number</span>) {
+  <span class="kw">return this</span>.itemsService.<span class="fn">findOne</span>(id);
+}</pre>
+      <p><code>@Param('id')</code> extracts <code>req.params.id</code> from the URL. But URL params are always strings in Express. <code>ParseIntPipe</code> converts it to a number automatically.</p>
+      <p>If someone requests <code>GET /items/abc</code>, the <code>ParseIntPipe</code> returns a 400 error:</p>
+<pre>{
+  <span class="str">"statusCode"</span>: <span class="num">400</span>,
+  <span class="str">"message"</span>: <span class="str">"Validation failed (numeric string is expected)"</span>,
+  <span class="str">"error"</span>: <span class="str">"Bad Request"</span>
+}</pre>
+      <div class="tip"><strong>Express equivalent:</strong>
+<pre>router.<span class="fn">get</span>(<span class="str">'/:id'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> id = <span class="fn">parseInt</span>(req.params.id, <span class="num">10</span>);
+  <span class="kw">if</span> (<span class="fn">isNaN</span>(id)) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">400</span>).<span class="fn">json</span>({ error: <span class="str">'Invalid ID'</span> });
+  }
+  <span class="kw">const</span> item = <span class="kw">await</span> itemsService.<span class="fn">findOne</span>(id);
+  res.<span class="fn">json</span>(item);
+});</pre>
+      <code>ParseIntPipe</code> replaces 3 lines of manual parsing + validation with a single pipe argument.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-content">
+      <p><strong>PUT /items/:id &mdash; Update</strong></p>
+<pre><span class="dec">@Put</span>(<span class="str">':id'</span>)
+<span class="fn">update</span>(
+  <span class="dec">@Param</span>(<span class="str">'id'</span>, ParseIntPipe) id: <span class="kw">number</span>,
+  <span class="dec">@Body</span>() updateItemDto: UpdateItemDto,
+) {
+  <span class="kw">return this</span>.itemsService.<span class="fn">update</span>(id, updateItemDto);
+}</pre>
+      <p>This method combines both patterns: extracting a route param AND a request body. The <code>:id</code> param is parsed to a number, the body is validated against <code>UpdateItemDto</code>, and both are passed to the service.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-content">
+      <p><strong>DELETE /items/:id &mdash; Remove</strong></p>
+<pre><span class="dec">@Delete</span>(<span class="str">':id'</span>)
+<span class="fn">remove</span>(<span class="dec">@Param</span>(<span class="str">'id'</span>, ParseIntPipe) id: <span class="kw">number</span>) {
+  <span class="kw">return this</span>.itemsService.<span class="fn">remove</span>(id);
+}</pre>
+      <p>Same pattern as GET one &mdash; parse the ID, delegate to the service. Since <code>remove()</code> returns <code>void</code>, the response body will be empty with a 200 status.</p>
+    </div>
+  </div>
+
+  <h2>The Full Route Table</h2>
+  <p>Here's what Nest registers on the Express router from this controller:</p>
+
+  <table>
+    <tr><th>Method</th><th>Route</th><th>Handler</th><th>Status</th></tr>
+    <tr><td><code>POST</code></td><td><code>/items</code></td><td><code>create()</code></td><td>201</td></tr>
+    <tr><td><code>GET</code></td><td><code>/items</code></td><td><code>findAll()</code></td><td>200</td></tr>
+    <tr><td><code>GET</code></td><td><code>/items/:id</code></td><td><code>findOne()</code></td><td>200</td></tr>
+    <tr><td><code>PUT</code></td><td><code>/items/:id</code></td><td><code>update()</code></td><td>200</td></tr>
+    <tr><td><code>DELETE</code></td><td><code>/items/:id</code></td><td><code>remove()</code></td><td>200</td></tr>
+  </table>
+
+  <h2>What the Controller Does NOT Do</h2>
+  <ul>
+    <li><strong>No database access.</strong> That's the service's job.</li>
+    <li><strong>No validation logic.</strong> That's handled by DTOs + ValidationPipe.</li>
+    <li><strong>No error response formatting.</strong> Nest exceptions (<code>NotFoundException</code>, etc.) handle that.</li>
+    <li><strong>No <code>res.json()</code> or <code>res.status()</code>.</strong> Just return the value and Nest handles it.</li>
+  </ul>
+
+  <p>The controller is deliberately thin. It's a mapping layer: HTTP in, service call, data out.</p>
+
+  <h2>Request Lifecycle Summary</h2>
+<pre>
+Client: POST /items { <span class="str">"name"</span>: <span class="str">"Widget"</span> }
+  │
+  ▼
+<span class="fn">Express</span> receives the request
+  │
+  ▼
+<span class="fn">@Controller('items')</span> + <span class="fn">@Post()</span> → matches route
+  │
+  ▼
+<span class="fn">ValidationPipe</span> validates body against <span class="fn">CreateItemDto</span>
+  │
+  ▼
+<span class="fn">@Body()</span> extracts validated DTO
+  │
+  ▼
+<span class="fn">ItemsController.create(dto)</span> called
+  │
+  ▼
+<span class="fn">ItemsService.create(dto)</span> → INSERT into PostgreSQL
+  │
+  ▼
+Nest awaits the Promise, serializes to JSON
+  │
+  ▼
+Client receives: 201 { <span class="str">"id"</span>: <span class="num">1</span>, <span class="str">"name"</span>: <span class="str">"Widget"</span>, <span class="str">"description"</span>: <span class="str">""</span> }
+</pre>
+
+  <div class="tip"><strong>Key takeaway:</strong> The controller is a thin routing layer. Decorators replace Express's manual <code>router.get()</code> / <code>req.params</code> / <code>res.json()</code> pattern. Every method follows the same shape: extract inputs via decorators, call the service, return the result.</div>
+
+  <div class="nav-footer">
+    <a href="walkthrough-service.html">&larr; Service</a>
+    <div class="spacer"></div>
+    <a href="walkthrough-testing.html">Next: Testing &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>

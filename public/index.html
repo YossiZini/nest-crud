@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NestJS for Express Developers</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.7; color: #e0e0e0; background: #121212; }
+    .container { max-width: 860px; margin: 0 auto; padding: 40px 24px; }
+    h1 { font-size: 2.2rem; margin-bottom: 8px; color: #fff; }
+    h1 span { color: #e74c3c; }
+    .subtitle { color: #999; margin-bottom: 40px; font-size: 1.1rem; }
+    h2 { font-size: 1.5rem; margin: 48px 0 16px; padding-top: 16px; border-top: 1px solid #333; color: #fff; }
+    h3 { font-size: 1.15rem; margin: 24px 0 8px; color: #ccc; }
+    p { margin-bottom: 16px; color: #bbb; }
+    a { color: #e74c3c; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: #1e1e1e; color: #e06c75; padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+
+    pre { background: #1e1e1e; color: #abb2bf; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 12px 0 20px; font-size: 0.88rem; line-height: 1.6; border: 1px solid #333; }
+    pre .kw { color: #c678dd; }
+    pre .fn { color: #61afef; }
+    pre .str { color: #98c379; }
+    pre .dec { color: #e5c07b; }
+    pre .cmt { color: #5c6370; font-style: italic; }
+
+    .toc { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 24px 32px; margin-bottom: 40px; }
+    .toc h2 { margin: 0 0 12px; border: none; padding: 0; font-size: 1.2rem; }
+    .toc ol { padding-left: 20px; }
+    .toc li { margin: 6px 0; }
+    .toc a { color: #61afef; }
+
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 20px; }
+    .compare > div { min-width: 0; }
+    .compare .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 4px; }
+    @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+
+    .tip { background: #1a2332; border-left: 4px solid #61afef; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+    .tip strong { color: #61afef; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+    th, td { text-align: left; padding: 10px 12px; border: 1px solid #333; }
+    th { background: #1e1e1e; color: #fff; }
+    td { color: #bbb; }
+
+    /* Help icon */
+    .help {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #333; color: #61afef; font-size: 12px; font-weight: 700;
+      cursor: pointer; margin-left: 4px; vertical-align: middle;
+      border: 1px solid #555; transition: background 0.2s, border-color 0.2s;
+      line-height: 1; font-family: serif;
+    }
+    .help:hover { background: #444; border-color: #61afef; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: #1e1e1e; border: 1px solid #444; border-radius: 12px;
+      max-width: 520px; width: 90%; padding: 28px 28px 20px;
+      position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal-title {
+      font-size: 1.15rem; color: #fff; margin-bottom: 12px;
+      padding-bottom: 10px; border-bottom: 1px solid #333;
+    }
+    .modal-body { color: #bbb; font-size: 0.95rem; line-height: 1.7; }
+    .modal-body code { font-size: 0.85em; }
+    .modal-close {
+      position: absolute; top: 12px; right: 16px;
+      background: none; border: none; color: #666;
+      font-size: 22px; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: #fff; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Nest<span>JS</span> for Express Developers</h1>
+  <p class="subtitle">Nest is <strong style="color:#fff">built on top of Express</strong>. Same engine, better architecture. A quick guide for Express developers.</p>
+
+  <nav class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#big-picture">The Big Picture: Express vs Nest</a></li>
+      <li><a href="#express-under-hood">Express Under the Hood</a></li>
+      <li><a href="#project-structure">Project Structure</a></li>
+      <li><a href="#modules">Modules</a></li>
+      <li><a href="#controllers">Controllers (Routes)</a></li>
+      <li><a href="#services">Services &amp; Dependency Injection</a></li>
+      <li><a href="#decorators">Decorators Cheat Sheet</a></li>
+      <li><a href="#typeorm">TypeORM Integration</a></li>
+      <li><a href="#validation">Validation with Pipes</a></li>
+      <li><a href="#testing">Testing</a></li>
+      <li><a href="#running">Running This Project</a></li>
+    </ol>
+
+    <h2 style="margin-top: 20px; border: none; padding: 0; font-size: 1.2rem;">Demo Code Walkthrough</h2>
+    <p style="color: #888; font-size: 0.9rem; margin-bottom: 8px;">Step-by-step walkthrough of every file in this project:</p>
+    <ol>
+      <li><a href="walkthrough-entry.html">Entry Point &mdash; main.ts</a></li>
+      <li><a href="walkthrough-modules.html">Modules &mdash; AppModule &amp; ItemsModule</a></li>
+      <li><a href="walkthrough-entity.html">Entity &mdash; item.entity.ts</a></li>
+      <li><a href="walkthrough-dto.html">DTOs &mdash; create-item.dto.ts &amp; update-item.dto.ts</a></li>
+      <li><a href="walkthrough-service.html">Service &mdash; items.service.ts</a></li>
+      <li><a href="walkthrough-controller.html">Controller &mdash; items.controller.ts</a></li>
+      <li><a href="walkthrough-testing.html">Testing &mdash; Unit Tests &amp; E2E Tests</a></li>
+    </ol>
+  </nav>
+
+  <!-- =========================================== -->
+  <h2 id="big-picture">1. The Big Picture: Express vs Nest</h2>
+  <p>Nest <strong>uses Express as its HTTP server</strong>. When you create a Nest app, Express is running underneath &mdash; handling requests, routing, and middleware exactly as you know it. Nest adds an architectural layer on top: modules<span class="help" data-term="module">?</span>, controllers<span class="help" data-term="controller">?</span>, services<span class="help" data-term="service">?</span>, and dependency injection (DI)<span class="help" data-term="di">?</span>.</p>
+
+  <table>
+    <tr><th>Express (what you know)</th><th>Nest (Express + structure)</th></tr>
+    <tr><td>Flat file structure, your choice</td><td>Module-based, opinionated structure</td></tr>
+    <tr><td>Manual wiring of routes</td><td>Decorators<span class="help" data-term="decorator">?</span> define routes</td></tr>
+    <tr><td>No built-in DI</td><td>Built-in DI container<span class="help" data-term="di-container">?</span></td></tr>
+    <tr><td><code>app.get('/items', handler)</code></td><td><code>@Get() findAll()</code></td></tr>
+    <tr><td>Middleware-centric</td><td>Middleware + Guards<span class="help" data-term="guard">?</span> + Interceptors<span class="help" data-term="interceptor">?</span> + Pipes<span class="help" data-term="pipe">?</span></td></tr>
+    <tr><td><code>express()</code></td><td><code>NestFactory.create&lt;NestExpressApplication&gt;()</code></td></tr>
+  </table>
+
+  <div class="tip"><strong>Key insight:</strong> Nest is <em>not</em> a replacement for Express &mdash; it's Express with guardrails. Your Express knowledge (middleware, req/res, routing) still applies.</div>
+
+  <!-- =========================================== -->
+  <h2 id="express-under-hood">2. Express Under the Hood</h2>
+  <p>Nest uses <code>@nestjs/platform-express</code> to run Express as its HTTP layer. This is the <strong>default platform</strong><span class="help" data-term="platform">?</span> &mdash; you don't need to install anything extra.</p>
+
+<pre><span class="cmt">// main.ts — Nest explicitly using Express</span>
+<span class="kw">import</span> { NestFactory } <span class="kw">from</span> <span class="str">'@nestjs/core'</span>;
+<span class="kw">import</span> { <span class="fn">NestExpressApplication</span> } <span class="kw">from</span> <span class="str">'@nestjs/platform-express'</span>;
+
+<span class="kw">const</span> app = <span class="kw">await</span> NestFactory.<span class="fn">create</span>&lt;<span class="fn">NestExpressApplication</span>&gt;(AppModule);</pre>
+
+  <p>Because Express is underneath, you can:</p>
+  <ul style="margin: 0 0 16px 20px; color: #bbb;">
+    <li>Use any Express middleware: <code>app.use(cors())</code>, <code>app.use(helmet())</code></li>
+    <li>Access the raw Express instance: <code>const expressApp = app.getHttpAdapter().getInstance()</code></li>
+    <li>Use <code>@Req()</code> and <code>@Res()</code> decorators<span class="help" data-term="decorator">?</span> to access Express's <code>req</code> and <code>res</code> objects directly</li>
+  </ul>
+
+<pre><span class="cmt">// You can still access Express req/res when needed</span>
+<span class="dec">@Get</span>(<span class="str">'custom'</span>)
+<span class="fn">customRoute</span>(<span class="dec">@Req</span>() req: Request, <span class="dec">@Res</span>() res: Response) {
+  <span class="cmt">// This is plain Express — req and res are the same objects you know</span>
+  res.<span class="fn">status</span>(200).<span class="fn">json</span>({ message: <span class="str">'Hello from Express!'</span> });
+}</pre>
+
+  <div class="tip"><strong>Bottom line:</strong> Every Nest app is an Express app. Nest just provides structure (modules, DI, decorators) so you don't have to invent your own architecture as the project grows.</div>
+
+  <!-- =========================================== -->
+  <h2 id="project-structure">3. Project Structure</h2>
+  <p>A typical Nest project:</p>
+<pre>
+src/
+├── main.ts                        <span class="cmt">// Entry point (like app.listen)</span>
+├── app.module.ts                  <span class="cmt">// Root module (wires everything)</span>
+├── items/
+│   ├── items.module.ts            <span class="cmt">// Feature module</span>
+│   ├── items.controller.ts        <span class="cmt">// Route handlers</span>
+│   ├── items.controller.spec.ts   <span class="cmt">// Controller unit tests</span>
+│   ├── items.service.ts           <span class="cmt">// Business logic</span>
+│   ├── items.service.spec.ts      <span class="cmt">// Service unit tests</span>
+│   ├── item.entity.ts             <span class="cmt">// TypeORM entity</span>
+│   └── dto/
+│       ├── create-item.dto.ts
+│       └── update-item.dto.ts
+test/
+└── app.e2e-spec.ts                <span class="cmt">// End-to-end API tests</span>
+</pre>
+
+  <p>Compare with a typical Express layout:</p>
+<pre>
+src/
+├── index.js          <span class="cmt">// app.listen + middleware</span>
+├── routes/items.js   <span class="cmt">// router.get, router.post...</span>
+├── models/item.js    <span class="cmt">// Sequelize/Mongoose model</span>
+</pre>
+
+  <p>In Nest, each <strong>feature</strong> (items, users, auth...) gets its own folder with a module, controller, and service. This keeps things organized as the app grows.</p>
+
+  <!-- =========================================== -->
+  <h2 id="modules">4. Modules</h2>
+  <p>A <strong>Module</strong><span class="help" data-term="module">?</span> is a class decorated with <code>@Module()</code>. It groups related controllers and services together. Think of it as a self-contained feature package.</p>
+
+  <div class="compare">
+    <div>
+      <div class="label">Express</div>
+<pre><span class="cmt">// No module concept. You just
+// require() and wire things manually.</span>
+<span class="kw">const</span> itemsRouter = <span class="fn">require</span>(<span class="str">'./routes/items'</span>);
+app.<span class="fn">use</span>(<span class="str">'/items'</span>, itemsRouter);</pre>
+    </div>
+    <div>
+      <div class="label">Nest</div>
+<pre><span class="dec">@Module</span>({
+  <span class="fn">imports</span>: [TypeOrmModule.<span class="fn">forFeature</span>([Item])],
+  <span class="fn">controllers</span>: [ItemsController],
+  <span class="fn">providers</span>: [ItemsService],
+})
+<span class="kw">export class</span> <span class="fn">ItemsModule</span> {}</pre>
+    </div>
+  </div>
+
+  <p><code>imports</code> &mdash; other modules this module depends on.<br>
+  <code>controllers</code> &mdash; route handlers.<br>
+  <code>providers</code><span class="help" data-term="provider">?</span> &mdash; injectable services.</p>
+
+  <p>The root <code>AppModule</code> imports all feature modules:</p>
+<pre><span class="dec">@Module</span>({
+  <span class="fn">imports</span>: [
+    TypeOrmModule.<span class="fn">forRoot</span>({ <span class="cmt">/* db config */</span> }),
+    ItemsModule,
+  ],
+})
+<span class="kw">export class</span> <span class="fn">AppModule</span> {}</pre>
+
+  <!-- =========================================== -->
+  <h2 id="controllers">5. Controllers (Routes)</h2>
+  <p>Controllers<span class="help" data-term="controller">?</span> handle HTTP requests. Each method maps to a route via decorators<span class="help" data-term="decorator">?</span>.</p>
+
+  <div class="compare">
+    <div>
+      <div class="label">Express</div>
+<pre><span class="kw">const</span> router = express.<span class="fn">Router</span>();
+
+router.<span class="fn">get</span>(<span class="str">'/'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> items = <span class="kw">await</span> Item.<span class="fn">findAll</span>();
+  res.<span class="fn">json</span>(items);
+});
+
+router.<span class="fn">post</span>(<span class="str">'/'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> item = <span class="kw">await</span> Item.<span class="fn">create</span>(req.body);
+  res.<span class="fn">status</span>(201).<span class="fn">json</span>(item);
+});
+
+router.<span class="fn">get</span>(<span class="str">'/:id'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> item = <span class="kw">await</span> Item.<span class="fn">findByPk</span>(req.params.id);
+  res.<span class="fn">json</span>(item);
+});</pre>
+    </div>
+    <div>
+      <div class="label">Nest</div>
+<pre><span class="dec">@Controller</span>(<span class="str">'items'</span>)
+<span class="kw">export class</span> <span class="fn">ItemsController</span> {
+  <span class="kw">constructor</span>(
+    <span class="kw">private readonly</span> itemsService: ItemsService
+  ) {}
+
+  <span class="dec">@Get</span>()
+  <span class="fn">findAll</span>() {
+    <span class="kw">return</span> <span class="kw">this</span>.itemsService.<span class="fn">findAll</span>();
+  }
+
+  <span class="dec">@Post</span>()
+  <span class="fn">create</span>(<span class="dec">@Body</span>() dto: CreateItemDto) {
+    <span class="kw">return</span> <span class="kw">this</span>.itemsService.<span class="fn">create</span>(dto);
+  }
+
+  <span class="dec">@Get</span>(<span class="str">':id'</span>)
+  <span class="fn">findOne</span>(<span class="dec">@Param</span>(<span class="str">'id'</span>) id: <span class="kw">number</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.itemsService.<span class="fn">findOne</span>(id);
+  }
+}</pre>
+    </div>
+  </div>
+
+  <div class="tip"><strong>Notice:</strong> In Nest, controllers don't touch the database directly. They delegate to a <strong>service</strong><span class="help" data-term="service">?</span>. This separation makes testing much easier.</div>
+
+  <!-- =========================================== -->
+  <h2 id="services">6. Services &amp; Dependency Injection</h2>
+  <p>A <strong>Service</strong><span class="help" data-term="service">?</span> holds your business logic. It's decorated with <code>@Injectable()</code><span class="help" data-term="injectable">?</span> and gets automatically injected into controllers via the constructor.</p>
+
+  <div class="compare">
+    <div>
+      <div class="label">Express</div>
+<pre><span class="cmt">// Typically mixed into route handler,
+// or a plain module you require()</span>
+<span class="kw">const</span> db = <span class="fn">require</span>(<span class="str">'../db'</span>);
+
+<span class="kw">async function</span> <span class="fn">getAllItems</span>() {
+  <span class="kw">return</span> db.<span class="fn">query</span>(<span class="str">'SELECT * FROM items'</span>);
+}
+
+module.exports = { getAllItems };</pre>
+    </div>
+    <div>
+      <div class="label">Nest</div>
+<pre><span class="dec">@Injectable</span>()
+<span class="kw">export class</span> <span class="fn">ItemsService</span> {
+  <span class="kw">constructor</span>(
+    <span class="dec">@InjectRepository</span>(Item)
+    <span class="kw">private readonly</span> repo: Repository&lt;Item&gt;,
+  ) {}
+
+  <span class="fn">findAll</span>(): Promise&lt;Item[]&gt; {
+    <span class="kw">return this</span>.repo.<span class="fn">find</span>();
+  }
+
+  <span class="kw">async</span> <span class="fn">findOne</span>(id: <span class="kw">number</span>): Promise&lt;Item&gt; {
+    <span class="kw">const</span> item = <span class="kw">await this</span>.repo.<span class="fn">findOneBy</span>({ id });
+    <span class="kw">if</span> (!item) <span class="kw">throw new</span> <span class="fn">NotFoundException</span>();
+    <span class="kw">return</span> item;
+  }
+}</pre>
+    </div>
+  </div>
+
+  <p><strong>How DI works:</strong> You declare the service in a module's <code>providers</code><span class="help" data-term="provider">?</span> array. Nest's DI container<span class="help" data-term="di-container">?</span> creates a singleton<span class="help" data-term="singleton">?</span> and injects it wherever it's requested via constructor parameters. No manual <code>require()</code> or <code>new Service()</code> needed.</p>
+
+  <!-- =========================================== -->
+  <h2 id="decorators">7. Decorators Cheat Sheet</h2>
+  <p>Decorators<span class="help" data-term="decorator">?</span> are Nest's primary API. Here's a quick reference:</p>
+
+  <table>
+    <tr><th>Decorator</th><th>Express Equivalent</th><th>Purpose</th></tr>
+    <tr><td><code>@Controller('path')</code></td><td><code>express.Router()</code></td><td>Groups routes under a path prefix</td></tr>
+    <tr><td><code>@Get() @Post() @Put() @Delete()</code></td><td><code>router.get() .post()</code> etc.</td><td>HTTP method handlers</td></tr>
+    <tr><td><code>@Body()</code></td><td><code>req.body</code></td><td>Extract request body</td></tr>
+    <tr><td><code>@Param('id')</code></td><td><code>req.params.id</code></td><td>Extract route params</td></tr>
+    <tr><td><code>@Query('q')</code></td><td><code>req.query.q</code></td><td>Extract query string</td></tr>
+    <tr><td><code>@Req()</code></td><td><code>req</code></td><td>Inject the Express Request object</td></tr>
+    <tr><td><code>@Res()</code></td><td><code>res</code></td><td>Inject the Express Response object</td></tr>
+    <tr><td><code>@Injectable()</code><span class="help" data-term="injectable">?</span></td><td>&mdash;</td><td>Marks a class as DI-injectable</td></tr>
+    <tr><td><code>@Module()</code><span class="help" data-term="module">?</span></td><td>&mdash;</td><td>Declares a module</td></tr>
+  </table>
+
+  <!-- =========================================== -->
+  <h2 id="typeorm">8. TypeORM Integration</h2>
+  <p>TypeORM handles database operations. An <strong>Entity</strong><span class="help" data-term="entity">?</span> maps a class to a database table.</p>
+
+<pre><span class="kw">import</span> { Entity, PrimaryGeneratedColumn, Column } <span class="kw">from</span> <span class="str">'typeorm'</span>;
+
+<span class="dec">@Entity</span>()
+<span class="kw">export class</span> <span class="fn">Item</span> {
+  <span class="dec">@PrimaryGeneratedColumn</span>()
+  id: <span class="kw">number</span>;
+
+  <span class="dec">@Column</span>()
+  name: <span class="kw">string</span>;
+
+  <span class="dec">@Column</span>({ default: <span class="str">''</span> })
+  description: <span class="kw">string</span>;
+}</pre>
+
+  <p><strong>Wiring it up:</strong></p>
+  <ul style="margin: 0 0 16px 20px; color: #bbb;">
+    <li><code>TypeOrmModule.forRoot({...})</code><span class="help" data-term="forroot">?</span> in AppModule &mdash; database connection config</li>
+    <li><code>TypeOrmModule.forFeature([Item])</code><span class="help" data-term="forfeature">?</span> in ItemsModule &mdash; registers the entity for that module</li>
+    <li><code>@InjectRepository(Item)</code><span class="help" data-term="inject-repository">?</span> in the service &mdash; injects the TypeORM repository<span class="help" data-term="repository">?</span></li>
+  </ul>
+
+  <p>The repository<span class="help" data-term="repository">?</span> gives you methods like <code>.find()</code>, <code>.findOneBy()</code>, <code>.save()</code>, <code>.remove()</code> &mdash; no raw SQL needed.</p>
+
+  <!-- =========================================== -->
+  <h2 id="validation">9. Validation with Pipes</h2>
+  <p>Nest uses <strong>Pipes</strong><span class="help" data-term="pipe">?</span> to transform and validate incoming data. The <code>ValidationPipe</code><span class="help" data-term="validation-pipe">?</span> works with <code>class-validator</code> decorators on DTOs<span class="help" data-term="dto">?</span>.</p>
+
+  <div class="compare">
+    <div>
+      <div class="label">Express (manual)</div>
+<pre>router.<span class="fn">post</span>(<span class="str">'/'</span>, (req, res) => {
+  <span class="kw">if</span> (!req.body.name) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(400)
+      .<span class="fn">json</span>({ error: <span class="str">'Name required'</span> });
+  }
+  <span class="cmt">// proceed...</span>
+});</pre>
+    </div>
+    <div>
+      <div class="label">Nest (declarative)</div>
+<pre><span class="kw">export class</span> <span class="fn">CreateItemDto</span> {
+  <span class="dec">@IsString</span>()
+  <span class="dec">@IsNotEmpty</span>()
+  name: <span class="kw">string</span>;
+
+  <span class="dec">@IsString</span>()
+  <span class="dec">@IsOptional</span>()
+  description?: <span class="kw">string</span>;
+}</pre>
+    </div>
+  </div>
+
+  <p>Enable it globally in <code>main.ts</code>:</p>
+<pre>app.<span class="fn">useGlobalPipes</span>(<span class="kw">new</span> <span class="fn">ValidationPipe</span>({ whitelist: <span class="kw">true</span> }));</pre>
+  <p><code>whitelist: true</code><span class="help" data-term="whitelist">?</span> strips any properties not in the DTO<span class="help" data-term="dto">?</span>. Validation errors automatically return a 400 response.</p>
+
+  <!-- =========================================== -->
+  <h2 id="testing">10. Testing</h2>
+  <p>Nest has first-class testing support via <code>@nestjs/testing</code>. The key idea: you create a <strong>testing module</strong><span class="help" data-term="testing-module">?</span> where you can swap real dependencies with mocks.</p>
+
+  <h3>Unit Test (Service)</h3>
+<pre><span class="kw">const</span> module = <span class="kw">await</span> Test.<span class="fn">createTestingModule</span>({
+  providers: [
+    ItemsService,
+    {
+      provide: <span class="fn">getRepositoryToken</span>(Item),
+      useValue: mockRepository,  <span class="cmt">// fake repo</span>
+    },
+  ],
+}).<span class="fn">compile</span>();
+
+<span class="kw">const</span> service = module.<span class="fn">get</span>(ItemsService);
+<span class="kw">const</span> result = <span class="kw">await</span> service.<span class="fn">findAll</span>();
+<span class="fn">expect</span>(result).<span class="fn">toEqual</span>([mockItem]);</pre>
+
+  <h3>Unit Test (Controller)</h3>
+<pre><span class="kw">const</span> module = <span class="kw">await</span> Test.<span class="fn">createTestingModule</span>({
+  controllers: [ItemsController],
+  providers: [
+    { provide: ItemsService, useValue: mockService },
+  ],
+}).<span class="fn">compile</span>();
+
+<span class="kw">const</span> controller = module.<span class="fn">get</span>(ItemsController);
+<span class="fn">expect</span>(<span class="kw">await</span> controller.<span class="fn">findAll</span>()).<span class="fn">toEqual</span>([mockItem]);</pre>
+
+  <h3>E2E Test</h3>
+<pre><span class="kw">const</span> module = <span class="kw">await</span> Test.<span class="fn">createTestingModule</span>({
+  imports: [AppModule],
+}).<span class="fn">compile</span>();
+
+<span class="kw">const</span> app = module.<span class="fn">createNestApplication</span>();
+<span class="kw">await</span> app.<span class="fn">init</span>();
+
+<span class="kw">await</span> <span class="fn">request</span>(app.<span class="fn">getHttpServer</span>())
+  .<span class="fn">post</span>(<span class="str">'/items'</span>)
+  .<span class="fn">send</span>({ name: <span class="str">'Widget'</span> })
+  .<span class="fn">expect</span>(201);</pre>
+
+  <div class="tip"><strong>Key difference from Express testing:</strong> In Express, you'd use <code>supertest(app)</code> directly. In Nest, you build a <em>testing module</em><span class="help" data-term="testing-module">?</span> first, then call <code>app.getHttpServer()</code> to get the underlying Express server for supertest. This extra step lets you easily swap out databases, services, or any dependency.</div>
+
+  <!-- =========================================== -->
+  <h2 id="running">11. Running This Project</h2>
+  <p>This page is served by the very NestJS app it describes. Here's how to set it up:</p>
+
+<pre><span class="cmt"># 1. Create the database</span>
+createdb nest_crud
+createdb nest_crud_test  <span class="cmt"># for e2e tests</span>
+
+<span class="cmt"># 2. Install &amp; run</span>
+npm install
+npm run start:dev
+
+<span class="cmt"># 3. Test the API</span>
+curl -X POST http://localhost:3000/items \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"name":"Widget","description":"A cool widget"}'</span>
+
+curl http://localhost:3000/items
+
+<span class="cmt"># 4. Run tests</span>
+npm test              <span class="cmt"># unit tests</span>
+npm run test:e2e      <span class="cmt"># e2e tests (needs nest_crud_test db)</span></pre>
+
+  <h3>Environment Variables</h3>
+  <table>
+    <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>DB_HOST</code></td><td>localhost</td><td>PostgreSQL host</td></tr>
+    <tr><td><code>DB_PORT</code></td><td>5432</td><td>PostgreSQL port</td></tr>
+    <tr><td><code>DB_USER</code></td><td>postgres</td><td>Database user</td></tr>
+    <tr><td><code>DB_PASS</code></td><td>postgres</td><td>Database password</td></tr>
+    <tr><td><code>DB_NAME</code></td><td>nest_crud</td><td>Database name</td></tr>
+  </table>
+
+  <h3>API Endpoints</h3>
+  <table>
+    <tr><th>Method</th><th>URL</th><th>Description</th></tr>
+    <tr><td><code>POST</code></td><td><code>/items</code></td><td>Create an item</td></tr>
+    <tr><td><code>GET</code></td><td><code>/items</code></td><td>List all items</td></tr>
+    <tr><td><code>GET</code></td><td><code>/items/:id</code></td><td>Get one item</td></tr>
+    <tr><td><code>PUT</code></td><td><code>/items/:id</code></td><td>Update an item</td></tr>
+    <tr><td><code>DELETE</code></td><td><code>/items/:id</code></td><td>Delete an item</td></tr>
+  </table>
+
+  <p style="margin-top: 48px; color: #666; text-align: center; font-size: 0.9rem;">Built with NestJS + Express + TypeORM + PostgreSQL</p>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const glossary = {
+  "di": {
+    title: "Dependency Injection (DI)",
+    body: "A design pattern where objects receive their dependencies from the outside rather than creating them internally. In Express, you <code>require()</code> a database module directly inside your route file. In Nest, you declare what you need in the constructor, and the framework provides it automatically. This makes swapping implementations (e.g. a mock database for tests) trivial."
+  },
+  "di-container": {
+    title: "DI Container",
+    body: "The DI container is Nest's built-in system that manages the lifecycle of all injectable classes. It reads the <code>providers</code> array in your modules, creates instances (singletons by default), and automatically injects them wherever they're declared as constructor parameters. Think of it as an automatic <code>require()</code> that also handles instantiation and sharing."
+  },
+  "module": {
+    title: "Module",
+    body: "A module is a class annotated with <code>@Module()</code> that organizes your app into cohesive blocks. Each module declares its own controllers (routes), providers (services), and imports (dependencies on other modules). In Express terms, imagine if each <code>express.Router()</code> came bundled with its associated service files and DB models in a single, self-describing package."
+  },
+  "controller": {
+    title: "Controller",
+    body: "A controller is a class annotated with <code>@Controller()</code> that handles incoming HTTP requests. Each method in the class handles a specific route, defined via decorators like <code>@Get()</code>, <code>@Post()</code>, etc. It's the Nest equivalent of an Express Router &mdash; but instead of <code>router.get('/', handler)</code>, you write <code>@Get() methodName()</code>."
+  },
+  "service": {
+    title: "Service",
+    body: "A service is a class annotated with <code>@Injectable()</code> that contains your business logic. Controllers delegate work to services rather than handling it directly. In Express, you might put business logic in a separate file and <code>require()</code> it &mdash; a Nest service is the same idea, but managed by the DI container so it's automatically instantiated and shared."
+  },
+  "decorator": {
+    title: "Decorator",
+    body: "Decorators are special functions prefixed with <code>@</code> that attach metadata to classes, methods, or parameters. Nest reads this metadata at startup to wire up routes, inject dependencies, and configure modules. They're a TypeScript feature (stage 3 proposal in JS). Examples: <code>@Controller('items')</code>, <code>@Get()</code>, <code>@Body()</code>, <code>@Injectable()</code>."
+  },
+  "guard": {
+    title: "Guard",
+    body: "A guard is a class that implements <code>CanActivate</code> and decides whether a request should proceed. It runs <strong>before</strong> the route handler. Use it for authentication and authorization. In Express, you'd write this as middleware like <code>app.use(authMiddleware)</code> &mdash; guards are the Nest equivalent but with a dedicated interface and return type (<code>true</code>/<code>false</code>)."
+  },
+  "interceptor": {
+    title: "Interceptor",
+    body: "An interceptor wraps the execution of a route handler, letting you add logic <strong>before and after</strong> it runs. Common uses: logging, response transformation, caching, timeout handling. In Express, you'd achieve this with a pair of middleware functions. Nest interceptors use RxJS observables and the <code>NestInterceptor</code> interface for a cleaner pattern."
+  },
+  "pipe": {
+    title: "Pipe",
+    body: "A pipe transforms or validates input data before it reaches the route handler. Nest includes built-in pipes like <code>ValidationPipe</code> (validates DTOs) and <code>ParseIntPipe</code> (converts string params to numbers). In Express, you'd manually call <code>parseInt(req.params.id)</code> or use a validation library in middleware &mdash; pipes make this declarative."
+  },
+  "provider": {
+    title: "Provider",
+    body: "A provider is anything that can be injected via Nest's DI container. Services are the most common providers, but you can also provide values, factories, or other classes. The <code>providers</code> array in a module tells Nest what to make available for injection within that module's scope."
+  },
+  "injectable": {
+    title: "@Injectable()",
+    body: "The <code>@Injectable()</code> decorator marks a class as available for dependency injection. Without it, Nest's DI container won't know how to instantiate and manage the class. Any class you want to inject into a controller or another service must have this decorator."
+  },
+  "entity": {
+    title: "Entity",
+    body: "An entity is a TypeORM class decorated with <code>@Entity()</code> that maps to a database table. Each property decorated with <code>@Column()</code> maps to a table column. It's the equivalent of a Sequelize model or a Mongoose schema &mdash; a class-based representation of your database table structure."
+  },
+  "repository": {
+    title: "Repository",
+    body: "A repository is a TypeORM object that provides methods to interact with a specific entity's database table: <code>.find()</code>, <code>.findOneBy()</code>, <code>.save()</code>, <code>.remove()</code>, etc. In Nest, you get a repository via <code>@InjectRepository(Entity)</code> in your service's constructor. It's like a pre-built data access layer for each table."
+  },
+  "forroot": {
+    title: "TypeOrmModule.forRoot()",
+    body: "A static method that configures the TypeORM database connection at the <strong>root level</strong> of your app. Called once in <code>AppModule</code>, it sets up the connection pool with your host, port, credentials, and entity list. Think of it as the Nest equivalent of calling <code>createConnection()</code> at the top of your Express <code>index.js</code>."
+  },
+  "forfeature": {
+    title: "TypeOrmModule.forFeature()",
+    body: "A static method called in <strong>feature modules</strong> to register which entities (tables) that module needs access to. It makes the corresponding repositories available for injection within that module. Example: <code>TypeOrmModule.forFeature([Item])</code> makes <code>Repository&lt;Item&gt;</code> injectable in <code>ItemsService</code>."
+  },
+  "inject-repository": {
+    title: "@InjectRepository()",
+    body: "A decorator that injects a TypeORM repository for a specific entity into a service. Usage: <code>@InjectRepository(Item) private repo: Repository&lt;Item&gt;</code>. This gives you the full TypeORM repository API (<code>.find()</code>, <code>.save()</code>, etc.) for that entity without manually creating a connection."
+  },
+  "dto": {
+    title: "DTO (Data Transfer Object)",
+    body: "A DTO is a plain class that defines the shape of data for a specific operation (e.g. creating or updating an item). Combined with <code>class-validator</code> decorators like <code>@IsString()</code> and <code>@IsNotEmpty()</code>, DTOs let Nest automatically validate incoming request bodies. In Express, you'd manually check <code>req.body</code> fields &mdash; DTOs make validation declarative."
+  },
+  "validation-pipe": {
+    title: "ValidationPipe",
+    body: "A built-in Nest pipe that automatically validates incoming data against your DTO classes using <code>class-validator</code>. When enabled globally via <code>app.useGlobalPipes(new ValidationPipe())</code>, every request body is checked before reaching your controller. Invalid data returns a 400 error with details. No manual <code>if (!req.body.name)</code> checks needed."
+  },
+  "whitelist": {
+    title: "whitelist: true",
+    body: "A <code>ValidationPipe</code> option that strips any properties from the request body that are <strong>not</strong> defined in the DTO. If your DTO only has <code>name</code> and <code>description</code>, any extra fields (like <code>isAdmin: true</code>) get silently removed. This is a security measure to prevent mass assignment attacks."
+  },
+  "testing-module": {
+    title: "Testing Module",
+    body: "A special module created via <code>Test.createTestingModule()</code> from <code>@nestjs/testing</code>. It mirrors a real Nest module but lets you override providers with mocks. This is Nest's main advantage for testing: you can swap out the real database repository with a fake one, test a controller with a mocked service, etc. &mdash; all through the same DI system."
+  },
+  "singleton": {
+    title: "Singleton",
+    body: "By default, Nest's DI container creates <strong>one instance</strong> of each provider and shares it across the entire module. If three controllers inject the same service, they all get the same object. This is efficient and ensures shared state. You can change this behavior with scope options (<code>REQUEST</code> or <code>TRANSIENT</code>), but singleton is the default."
+  },
+  "platform": {
+    title: "Platform",
+    body: "Nest is platform-agnostic at the HTTP layer. The default platform is <code>@nestjs/platform-express</code>, which uses Express under the hood. You can alternatively use <code>@nestjs/platform-fastify</code> for Fastify. Your controllers, services, and modules stay identical &mdash; only the underlying HTTP engine changes. This project uses Express."
+  }
+};
+
+const overlay = document.getElementById('modal-overlay');
+const modalTitle = document.getElementById('modal-title');
+const modalBody = document.getElementById('modal-body');
+const modalClose = document.getElementById('modal-close');
+
+document.addEventListener('click', (e) => {
+  const helpBtn = e.target.closest('.help');
+  if (helpBtn) {
+    const term = helpBtn.getAttribute('data-term');
+    const entry = glossary[term];
+    if (entry) {
+      modalTitle.textContent = entry.title;
+      modalBody.innerHTML = entry.body;
+      overlay.classList.add('active');
+    }
+  }
+});
+
+modalClose.addEventListener('click', () => overlay.classList.remove('active'));
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) overlay.classList.remove('active');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') overlay.classList.remove('active');
+});
+</script>
+
+</body>
+</html>

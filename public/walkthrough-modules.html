@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: Modules</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="walkthrough-entry.html">&larr; Entry Point</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="walkthrough-entity.html">Next &rarr;</a>
+  </div>
+
+  <h1>Step 2: Modules<br><span>The Wiring System</span></h1>
+  <p>Modules are the organizing principle of Nest. Every Nest app has at least one module (the root <code>AppModule</code>). Each feature gets its own module. Think of a module as a box that holds everything related to one feature: its routes, its business logic, and its database access.</p>
+
+  <!-- ============ APP MODULE ============ -->
+  <h2>The Root Module: AppModule</h2>
+
+  <div class="file-label">src/app.module.ts</div>
+<pre><span class="kw">import</span> { Module } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { TypeOrmModule } <span class="kw">from</span> <span class="str">'@nestjs/typeorm'</span>;
+<span class="kw">import</span> { ServeStaticModule } <span class="kw">from</span> <span class="str">'@nestjs/serve-static'</span>;
+<span class="kw">import</span> { join } <span class="kw">from</span> <span class="str">'path'</span>;
+<span class="kw">import</span> { ItemsModule } <span class="kw">from</span> <span class="str">'./items/items.module.js'</span>;
+<span class="kw">import</span> { Item } <span class="kw">from</span> <span class="str">'./items/item.entity.js'</span>;
+
+<span class="dec">@Module</span>({
+  <span class="fn">imports</span>: [
+    ServeStaticModule.<span class="fn">forRoot</span>({
+      rootPath: <span class="fn">join</span>(__dirname, <span class="str">'..'</span>, <span class="str">'public'</span>),
+    }),
+    TypeOrmModule.<span class="fn">forRoot</span>({
+      type: <span class="str">'postgres'</span>,
+      host: process.env.DB_HOST || <span class="str">'localhost'</span>,
+      port: <span class="fn">parseInt</span>(process.env.DB_PORT ?? <span class="str">'5432'</span>, <span class="num">10</span>),
+      username: process.env.DB_USER || <span class="str">'postgres'</span>,
+      password: process.env.DB_PASS || <span class="str">'postgres'</span>,
+      database: process.env.DB_NAME || <span class="str">'nest_crud'</span>,
+      entities: [Item],
+      synchronize: <span class="kw">true</span>,
+    }),
+    ItemsModule,
+  ],
+})
+<span class="kw">export class</span> <span class="fn">AppModule</span> {}</pre>
+
+  <p>The <code>AppModule</code> is the root of the module tree. It doesn't have its own controllers or services &mdash; its job is to wire together global configuration and feature modules.</p>
+
+  <h3>Breaking it down</h3>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>The @Module() decorator</strong></p>
+<pre><span class="dec">@Module</span>({
+  <span class="fn">imports</span>: [ ... ],
+})</pre>
+      <p>The <code>@Module()</code> decorator takes a configuration object. The most important property is <code>imports</code> &mdash; an array of other modules this module depends on. Since <code>AppModule</code> is the root, it imports everything the app needs.</p>
+      <div class="tip"><strong>Express equivalent:</strong> In Express, your <code>index.js</code> would have a series of <code>app.use()</code> calls for each router, plus database setup code, plus static file config. The <code>@Module</code> decorator replaces all of that wiring.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>ServeStaticModule</strong></p>
+<pre>ServeStaticModule.<span class="fn">forRoot</span>({
+  rootPath: <span class="fn">join</span>(__dirname, <span class="str">'..'</span>, <span class="str">'public'</span>),
+}),</pre>
+      <p>This serves static files from the <code>public/</code> directory. It's the Nest equivalent of <code>app.use(express.static('public'))</code>. The <code>.forRoot()</code> pattern means "configure this module at the root level with these settings."</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>TypeOrmModule.forRoot()</strong></p>
+<pre>TypeOrmModule.<span class="fn">forRoot</span>({
+  type: <span class="str">'postgres'</span>,
+  host: process.env.DB_HOST || <span class="str">'localhost'</span>,
+  <span class="cmt">// ... connection config</span>
+  entities: [Item],
+  synchronize: <span class="kw">true</span>,
+}),</pre>
+      <p>This establishes the PostgreSQL connection for the entire app. Key properties:</p>
+      <ul>
+        <li><code>type: 'postgres'</code> &mdash; which database driver to use</li>
+        <li><code>entities: [Item]</code> &mdash; tells TypeORM which entity classes to manage</li>
+        <li><code>synchronize: true</code> &mdash; auto-creates/updates tables to match your entities. <strong>Only use this in development</strong> &mdash; in production, use migrations</li>
+      </ul>
+      <div class="warn"><strong>Express equivalent:</strong> You'd typically call <code>createConnection()</code> or <code>new Pool()</code> somewhere in your startup file and pass the connection around manually. Here, Nest's DI container manages the connection and makes it available to any module that needs it.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <p><strong>Importing the feature module</strong></p>
+<pre>ItemsModule,</pre>
+      <p>This single line tells Nest: "include the Items feature in this app." All of the Items routes, services, and database access come along automatically. No need to manually register each route.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <p><strong>The empty class body</strong></p>
+<pre><span class="kw">export class</span> <span class="fn">AppModule</span> {}</pre>
+      <p>The class itself is empty! All the configuration lives in the <code>@Module()</code> decorator. Nest reads the decorator metadata at startup to wire everything together. The class is just a container for that metadata.</p>
+    </div>
+  </div>
+
+  <!-- ============ ITEMS MODULE ============ -->
+  <h2>The Feature Module: ItemsModule</h2>
+
+  <div class="file-label">src/items/items.module.ts</div>
+<pre><span class="kw">import</span> { Module } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { TypeOrmModule } <span class="kw">from</span> <span class="str">'@nestjs/typeorm'</span>;
+<span class="kw">import</span> { Item } <span class="kw">from</span> <span class="str">'./item.entity.js'</span>;
+<span class="kw">import</span> { ItemsController } <span class="kw">from</span> <span class="str">'./items.controller.js'</span>;
+<span class="kw">import</span> { ItemsService } <span class="kw">from</span> <span class="str">'./items.service.js'</span>;
+
+<span class="dec">@Module</span>({
+  <span class="fn">imports</span>: [TypeOrmModule.<span class="fn">forFeature</span>([Item])],
+  <span class="fn">controllers</span>: [ItemsController],
+  <span class="fn">providers</span>: [ItemsService],
+})
+<span class="kw">export class</span> <span class="fn">ItemsModule</span> {}</pre>
+
+  <p>This is a <strong>feature module</strong> &mdash; it encapsulates everything related to the "items" feature. Let's break down the three properties:</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>imports: [TypeOrmModule.forFeature([Item])]</strong></p>
+      <p>While <code>forRoot()</code> in AppModule sets up the database connection, <code>forFeature()</code> registers specific entities <em>for this module</em>. This makes <code>Repository&lt;Item&gt;</code> injectable within ItemsModule. Without this line, the service wouldn't be able to access the <code>Item</code> table.</p>
+      <div class="line-note">Think of it this way: <code>forRoot()</code> = "connect to the database." <code>forFeature()</code> = "this module needs access to these tables."</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>controllers: [ItemsController]</strong></p>
+      <p>Declares which controllers belong to this module. Nest will scan <code>ItemsController</code> for route decorators (<code>@Get()</code>, <code>@Post()</code>, etc.) and register them on the Express router. All routes will be prefixed with whatever path is set in <code>@Controller('items')</code>.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>providers: [ItemsService]</strong></p>
+      <p>Declares which services are available for injection within this module. When <code>ItemsController</code>'s constructor asks for an <code>ItemsService</code>, the DI container knows to provide the instance declared here.</p>
+      <div class="tip"><strong>Express equivalent:</strong> There's no direct equivalent. In Express, you'd just <code>require('./items.service')</code> in your route file. Nest's provider system adds testability &mdash; you can easily swap <code>ItemsService</code> with a mock in tests.</div>
+    </div>
+  </div>
+
+  <h2>How the Module Tree Works</h2>
+  <p>Here's the full picture of how modules connect in our app:</p>
+
+<pre>
+<span class="fn">AppModule</span> <span class="cmt">(root)</span>
+├── <span class="fn">ServeStaticModule</span>      <span class="cmt">→ serves public/ files</span>
+├── <span class="fn">TypeOrmModule.forRoot</span>   <span class="cmt">→ PostgreSQL connection</span>
+└── <span class="fn">ItemsModule</span>            <span class="cmt">(feature)</span>
+    ├── <span class="fn">TypeOrmModule.forFeature</span>  <span class="cmt">→ Item repository</span>
+    ├── <span class="fn">ItemsController</span>          <span class="cmt">→ /items routes</span>
+    └── <span class="fn">ItemsService</span>             <span class="cmt">→ business logic</span>
+</pre>
+
+  <p>When you add a new feature (e.g., users), you create a new <code>UsersModule</code> with its own controller and service, then add it to <code>AppModule</code>'s imports. The feature is completely self-contained &mdash; you can even remove it by deleting one line from the imports array.</p>
+
+  <div class="tip"><strong>Key takeaway:</strong> Modules are the backbone of a Nest app. They enforce separation of concerns and make features portable. Each module is a self-contained unit that declares exactly what it needs and what it provides.</div>
+
+  <div class="nav-footer">
+    <a href="walkthrough-entry.html">&larr; Entry Point</a>
+    <div class="spacer"></div>
+    <a href="walkthrough-entity.html">Next: Entity &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: Entity</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="walkthrough-modules.html">&larr; Modules</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="walkthrough-dto.html">Next &rarr;</a>
+  </div>
+
+  <h1>Step 3: The Entity<br><span>item.entity.ts</span></h1>
+  <p>An entity defines the shape of a database table. Each instance of the class represents a row. TypeORM uses decorators on the class to generate the SQL schema &mdash; no raw SQL or separate migration file needed for development.</p>
+
+  <div class="file-label">src/items/item.entity.ts</div>
+<pre><span class="kw">import</span> { Entity, PrimaryGeneratedColumn, Column } <span class="kw">from</span> <span class="str">'typeorm'</span>;
+
+<span class="dec">@Entity</span>()
+<span class="kw">export class</span> <span class="fn">Item</span> {
+  <span class="dec">@PrimaryGeneratedColumn</span>()
+  id: <span class="kw">number</span>;
+
+  <span class="dec">@Column</span>()
+  name: <span class="kw">string</span>;
+
+  <span class="dec">@Column</span>({ default: <span class="str">''</span> })
+  description: <span class="kw">string</span>;
+}</pre>
+
+  <h2>Line-by-Line Breakdown</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>@Entity()</strong></p>
+<pre><span class="dec">@Entity</span>()
+<span class="kw">export class</span> <span class="fn">Item</span> {</pre>
+      <p>The <code>@Entity()</code> decorator marks this class as a database table. By default, the table name is the lowercase version of the class name: <code>item</code>. You can customize it: <code>@Entity('products')</code> would create a <code>products</code> table instead.</p>
+      <p>When <code>synchronize: true</code> is set in your TypeORM config (as we have in AppModule), Nest will automatically create this table in PostgreSQL when the app starts. If the table already exists, it updates the schema to match.</p>
+      <div class="tip"><strong>Express equivalent:</strong> If you used Sequelize, this is like <code>sequelize.define('Item', { ... })</code>. If you used Mongoose, it's like <code>new Schema({ ... })</code>. TypeORM uses a class-based approach with decorators instead of a config object.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>@PrimaryGeneratedColumn()</strong></p>
+<pre><span class="dec">@PrimaryGeneratedColumn</span>()
+id: <span class="kw">number</span>;</pre>
+      <p>This creates an auto-incrementing integer primary key column. The SQL generated is:</p>
+<pre><span class="cmt">-- Generated SQL</span>
+id SERIAL PRIMARY KEY</pre>
+      <p>You can also use <code>@PrimaryGeneratedColumn('uuid')</code> to get UUID primary keys instead of integers. The <code>id</code> property is automatically populated after saving a new item.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>@Column() &mdash; required field</strong></p>
+<pre><span class="dec">@Column</span>()
+name: <span class="kw">string</span>;</pre>
+      <p>A basic column with no options. TypeORM infers the SQL type from the TypeScript type:</p>
+      <table>
+        <tr><th>TypeScript type</th><th>PostgreSQL type</th></tr>
+        <tr><td><code>string</code></td><td><code>varchar(255)</code></td></tr>
+        <tr><td><code>number</code></td><td><code>integer</code></td></tr>
+        <tr><td><code>boolean</code></td><td><code>boolean</code></td></tr>
+        <tr><td><code>Date</code></td><td><code>timestamp</code></td></tr>
+      </table>
+      <p>Since there's no <code>nullable: true</code> option, this column is <strong>NOT NULL</strong> by default. Trying to save an Item without a name will throw a database error.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <p><strong>@Column() &mdash; with default value</strong></p>
+<pre><span class="dec">@Column</span>({ default: <span class="str">''</span> })
+description: <span class="kw">string</span>;</pre>
+      <p>The <code>default: ''</code> option sets a default value at the database level. If you save an Item without providing a description, PostgreSQL will use an empty string. The generated SQL is:</p>
+<pre><span class="cmt">-- Generated SQL</span>
+description varchar(<span class="num">255</span>) NOT NULL DEFAULT <span class="str">''</span></pre>
+      <p>Other useful column options:</p>
+      <ul>
+        <li><code>{ nullable: true }</code> &mdash; allows NULL values</li>
+        <li><code>{ unique: true }</code> &mdash; adds a UNIQUE constraint</li>
+        <li><code>{ length: 500 }</code> &mdash; sets varchar length</li>
+        <li><code>{ type: 'text' }</code> &mdash; override the SQL type</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>What This Creates in PostgreSQL</h2>
+  <p>When the app starts with <code>synchronize: true</code>, TypeORM runs the equivalent of:</p>
+<pre><span class="kw">CREATE TABLE</span> item (
+  id SERIAL <span class="kw">PRIMARY KEY</span>,
+  name <span class="fn">varchar</span>(<span class="num">255</span>) <span class="kw">NOT NULL</span>,
+  description <span class="fn">varchar</span>(<span class="num">255</span>) <span class="kw">NOT NULL DEFAULT</span> <span class="str">''</span>
+);</pre>
+
+  <h2>How the Entity Connects to the Rest of the App</h2>
+  <p>The entity alone doesn't do anything. It needs to be wired into the module system:</p>
+  <ol>
+    <li><strong>AppModule</strong> &rarr; <code>entities: [Item]</code> in <code>TypeOrmModule.forRoot()</code> tells TypeORM about this entity</li>
+    <li><strong>ItemsModule</strong> &rarr; <code>TypeOrmModule.forFeature([Item])</code> makes the <code>Repository&lt;Item&gt;</code> available for injection</li>
+    <li><strong>ItemsService</strong> &rarr; <code>@InjectRepository(Item)</code> receives the repository to run queries</li>
+  </ol>
+
+  <div class="tip"><strong>Key takeaway:</strong> The entity is your single source of truth for the database schema. Change a property here, and TypeORM updates the table. The same class is also used as the return type for your API responses &mdash; what you define here is what your API clients see.</div>
+
+  <div class="nav-footer">
+    <a href="walkthrough-modules.html">&larr; Modules</a>
+    <div class="spacer"></div>
+    <a href="walkthrough-dto.html">Next: DTOs &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>

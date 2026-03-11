@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: DTOs</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="walkthrough-entity.html">&larr; Entity</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="walkthrough-service.html">Next &rarr;</a>
+  </div>
+
+  <h1>Step 4: DTOs<br><span>Data Transfer Objects</span></h1>
+  <p>A DTO defines the shape of data coming <strong>into</strong> your API. While the entity defines what's in the database, DTOs define what clients are allowed to send. They're also where validation rules live.</p>
+
+  <p>We have two DTOs &mdash; one for creating items, one for updating them. Each operation has different rules: creating requires a name, updating doesn't.</p>
+
+  <!-- ============ CREATE DTO ============ -->
+  <h2>CreateItemDto</h2>
+
+  <div class="file-label">src/items/dto/create-item.dto.ts</div>
+<pre><span class="kw">import</span> { IsString, IsNotEmpty, IsOptional } <span class="kw">from</span> <span class="str">'class-validator'</span>;
+
+<span class="kw">export class</span> <span class="fn">CreateItemDto</span> {
+  <span class="dec">@IsString</span>()
+  <span class="dec">@IsNotEmpty</span>()
+  name: <span class="kw">string</span>;
+
+  <span class="dec">@IsString</span>()
+  <span class="dec">@IsOptional</span>()
+  description?: <span class="kw">string</span>;
+}</pre>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>name &mdash; required string</strong></p>
+<pre><span class="dec">@IsString</span>()
+<span class="dec">@IsNotEmpty</span>()
+name: <span class="kw">string</span>;</pre>
+      <p>Two validation decorators stacked on one property:</p>
+      <ul>
+        <li><code>@IsString()</code> &mdash; rejects anything that isn't a string (numbers, booleans, objects, etc.)</li>
+        <li><code>@IsNotEmpty()</code> &mdash; rejects empty strings <code>""</code> and missing values</li>
+      </ul>
+      <p>If a client sends <code>{ "name": "" }</code> or <code>{ "name": 123 }</code> or omits <code>name</code> entirely, the <code>ValidationPipe</code> returns a <strong>400 Bad Request</strong> with a detailed error message before your controller code ever runs.</p>
+
+      <div class="tip"><strong>Express equivalent:</strong>
+<pre>router.<span class="fn">post</span>(<span class="str">'/'</span>, (req, res) => {
+  <span class="kw">if</span> (!req.body.name || <span class="kw">typeof</span> req.body.name !== <span class="str">'string'</span>) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">400</span>).<span class="fn">json</span>({
+      error: <span class="str">'name must be a non-empty string'</span>
+    });
+  }
+  <span class="cmt">// proceed...</span>
+});</pre>
+      In Nest, those 5 lines of manual validation become 2 decorators.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>description &mdash; optional string</strong></p>
+<pre><span class="dec">@IsString</span>()
+<span class="dec">@IsOptional</span>()
+description?: <span class="kw">string</span>;</pre>
+      <ul>
+        <li><code>@IsOptional()</code> &mdash; the field can be omitted entirely (no error)</li>
+        <li><code>@IsString()</code> &mdash; <strong>but if provided</strong>, it must be a string</li>
+      </ul>
+      <p>The <code>?</code> in <code>description?: string</code> is TypeScript's optional property syntax. Combined with <code>@IsOptional()</code>, this means the client can send either <code>{ "name": "Widget" }</code> or <code>{ "name": "Widget", "description": "A cool widget" }</code>.</p>
+    </div>
+  </div>
+
+  <!-- ============ UPDATE DTO ============ -->
+  <h2>UpdateItemDto</h2>
+
+  <div class="file-label">src/items/dto/update-item.dto.ts</div>
+<pre><span class="kw">import</span> { IsString, IsOptional } <span class="kw">from</span> <span class="str">'class-validator'</span>;
+
+<span class="kw">export class</span> <span class="fn">UpdateItemDto</span> {
+  <span class="dec">@IsString</span>()
+  <span class="dec">@IsOptional</span>()
+  name?: <span class="kw">string</span>;
+
+  <span class="dec">@IsString</span>()
+  <span class="dec">@IsOptional</span>()
+  description?: <span class="kw">string</span>;
+}</pre>
+
+  <p>Notice the difference from <code>CreateItemDto</code>: <strong>both fields are optional</strong>. When updating, the client should be able to send just the fields they want to change:</p>
+
+<pre><span class="cmt">// Update only the name</span>
+PUT /items/<span class="num">1</span>
+{ <span class="str">"name"</span>: <span class="str">"Updated Widget"</span> }
+
+<span class="cmt">// Update only the description</span>
+PUT /items/<span class="num">1</span>
+{ <span class="str">"description"</span>: <span class="str">"New description"</span> }
+
+<span class="cmt">// Update both</span>
+PUT /items/<span class="num">1</span>
+{ <span class="str">"name"</span>: <span class="str">"Updated"</span>, <span class="str">"description"</span>: <span class="str">"New desc"</span> }</pre>
+
+  <h2>Why Separate DTOs?</h2>
+  <p>You might wonder: "Why not reuse the entity class for validation?" Three reasons:</p>
+  <ol>
+    <li><strong>Different rules per operation.</strong> Creating requires <code>name</code>, updating doesn't. The entity doesn't know about these rules.</li>
+    <li><strong>Security.</strong> The entity has an <code>id</code> field. If you used the entity as the DTO, a client could send <code>{ "id": 999 }</code> and potentially overwrite another record. DTOs expose only the fields clients should control.</li>
+    <li><strong>Whitelist protection.</strong> Because we set <code>whitelist: true</code> in the <code>ValidationPipe</code>, any property NOT in the DTO gets stripped. If someone sends <code>{ "name": "Widget", "role": "admin" }</code>, the <code>role</code> field is silently removed.</li>
+  </ol>
+
+  <h2>What Happens When Validation Fails</h2>
+  <p>If a client sends invalid data, the <code>ValidationPipe</code> returns a 400 response with structured error details:</p>
+<pre><span class="cmt">// Request</span>
+POST /items
+{ <span class="str">"name"</span>: <span class="num">123</span> }
+
+<span class="cmt">// Response — 400 Bad Request</span>
+{
+  <span class="str">"statusCode"</span>: <span class="num">400</span>,
+  <span class="str">"message"</span>: [
+    <span class="str">"name must be a string"</span>
+  ],
+  <span class="str">"error"</span>: <span class="str">"Bad Request"</span>
+}</pre>
+
+  <p>Your controller code never runs. The validation happens in the pipe layer, before the request reaches the controller.</p>
+
+  <h2>The Flow: Request &rarr; Pipe &rarr; Controller</h2>
+<pre>
+Client sends POST /items { <span class="str">"name"</span>: <span class="str">"Widget"</span> }
+       │
+       ▼
+<span class="fn">ValidationPipe</span> checks body against <span class="fn">CreateItemDto</span>
+       │
+       ├─ Valid?   → passes to <span class="fn">ItemsController.create()</span>
+       │
+       └─ Invalid? → returns 400 immediately
+</pre>
+
+  <div class="tip"><strong>Key takeaway:</strong> DTOs are the gatekeepers of your API. They define exactly what data is allowed in and validate it automatically. One DTO per operation gives you fine-grained control over what each endpoint accepts.</div>
+
+  <div class="nav-footer">
+    <a href="walkthrough-entity.html">&larr; Entity</a>
+    <div class="spacer"></div>
+    <a href="walkthrough-service.html">Next: Service &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>

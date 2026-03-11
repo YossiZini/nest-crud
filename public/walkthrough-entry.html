@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: Entry Point - main.ts</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="/">&larr; Back to Guide</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="walkthrough-modules.html">Next &rarr;</a>
+  </div>
+
+  <h1>Step 1: The Entry Point<br><span>main.ts</span></h1>
+  <p>Every Nest application starts with a single file: <code>main.ts</code>. This is the equivalent of your Express <code>index.js</code> where you call <code>app.listen()</code>. Let's walk through every line.</p>
+
+  <!-- Full file -->
+  <div class="file-label">src/main.ts</div>
+<pre><span class="kw">import</span> { NestFactory } <span class="kw">from</span> <span class="str">'@nestjs/core'</span>;
+<span class="kw">import</span> { <span class="fn">NestExpressApplication</span> } <span class="kw">from</span> <span class="str">'@nestjs/platform-express'</span>;
+<span class="kw">import</span> { ValidationPipe } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { AppModule } <span class="kw">from</span> <span class="str">'./app.module.js'</span>;
+
+<span class="kw">async function</span> <span class="fn">bootstrap</span>() {
+  <span class="kw">const</span> app = <span class="kw">await</span> NestFactory.<span class="fn">create</span>&lt;<span class="fn">NestExpressApplication</span>&gt;(AppModule);
+  app.<span class="fn">useGlobalPipes</span>(<span class="kw">new</span> <span class="fn">ValidationPipe</span>({ whitelist: <span class="kw">true</span> }));
+  <span class="kw">await</span> app.<span class="fn">listen</span>(process.env.PORT ?? <span class="num">3000</span>);
+}
+<span class="fn">bootstrap</span>();</pre>
+
+  <h2>Line-by-Line Breakdown</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>Imports</strong></p>
+<pre><span class="kw">import</span> { NestFactory } <span class="kw">from</span> <span class="str">'@nestjs/core'</span>;
+<span class="kw">import</span> { <span class="fn">NestExpressApplication</span> } <span class="kw">from</span> <span class="str">'@nestjs/platform-express'</span>;</pre>
+      <p><code>NestFactory</code> is the main class that boots up a Nest app. It's like calling <code>express()</code> but with the entire DI container, module system, and middleware pipeline baked in.</p>
+      <p><code>NestExpressApplication</code> is a type that tells TypeScript: "this app uses Express underneath." This gives you type-safe access to Express-specific methods like <code>app.set()</code>, <code>app.engine()</code>, etc.</p>
+      <div class="tip"><strong>Express equivalent:</strong> <code>const app = express();</code> &mdash; that single line is what Nest replaces with the factory pattern.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>The ValidationPipe import</strong></p>
+<pre><span class="kw">import</span> { ValidationPipe } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</pre>
+      <p><code>ValidationPipe</code> is a built-in Nest pipe that automatically validates request bodies against your DTO classes. In Express, you'd write your own validation middleware or use something like <code>express-validator</code>. Nest gives you this out of the box.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>Importing the root module</strong></p>
+<pre><span class="kw">import</span> { AppModule } <span class="kw">from</span> <span class="str">'./app.module.js'</span>;</pre>
+      <p>This is where Nest diverges from Express. Instead of manually registering routes, middleware, and database connections in your entry file, you import a single <strong>root module</strong> that declares the entire app structure. Everything &mdash; routes, services, database config &mdash; is organized inside this module tree.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <p><strong>Creating the app</strong></p>
+<pre><span class="kw">const</span> app = <span class="kw">await</span> NestFactory.<span class="fn">create</span>&lt;<span class="fn">NestExpressApplication</span>&gt;(AppModule);</pre>
+      <p>This single line does a <strong>lot</strong>:</p>
+      <ol>
+        <li>Creates an Express instance internally</li>
+        <li>Scans <code>AppModule</code> and all its imported modules</li>
+        <li>Instantiates all controllers and services via the DI container</li>
+        <li>Registers all routes defined by controller decorators</li>
+        <li>Sets up the Express middleware pipeline</li>
+      </ol>
+      <p>The <code>&lt;NestExpressApplication&gt;</code> generic explicitly tells Nest to use Express as the HTTP platform. This is the default, but being explicit makes it clear to anyone reading the code.</p>
+      <div class="warn"><strong>In Express:</strong> You'd need 20+ lines to wire up the same thing &mdash; create the app, register body-parser, set up each router, initialize database connections, etc. Nest does all of this from the module tree.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <p><strong>Global validation</strong></p>
+<pre>app.<span class="fn">useGlobalPipes</span>(<span class="kw">new</span> <span class="fn">ValidationPipe</span>({ whitelist: <span class="kw">true</span> }));</pre>
+      <p>This registers the <code>ValidationPipe</code> globally, meaning <strong>every incoming request</strong> will be validated against the corresponding DTO before it reaches your controller method.</p>
+      <p>The <code>whitelist: true</code> option strips any properties that are not defined in the DTO. If someone sends <code>{ "name": "Widget", "isAdmin": true }</code> but your DTO only has <code>name</code> and <code>description</code>, the <code>isAdmin</code> field is silently removed. This prevents mass assignment attacks.</p>
+      <div class="tip"><strong>Express equivalent:</strong> You'd need a middleware like:<br>
+      <code>app.use((req, res, next) => { /* validate req.body against schema... */ })</code><br>
+      With Nest, you just declare validation rules on your DTO class and it happens automatically.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-content">
+      <p><strong>Starting the server</strong></p>
+<pre><span class="kw">await</span> app.<span class="fn">listen</span>(process.env.PORT ?? <span class="num">3000</span>);</pre>
+      <p>This calls Express's <code>app.listen()</code> under the hood. The <code>??</code> operator provides a default port of 3000 if no <code>PORT</code> environment variable is set. Exactly the same as in Express.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-content">
+      <p><strong>The bootstrap pattern</strong></p>
+<pre><span class="kw">async function</span> <span class="fn">bootstrap</span>() { ... }
+<span class="fn">bootstrap</span>();</pre>
+      <p>Nest wraps the startup in an <code>async</code> function called <code>bootstrap</code> because <code>NestFactory.create()</code> and <code>app.listen()</code> are both async operations. You can't use top-level await in all environments, so this pattern ensures compatibility. You'll see this in every Nest project.</p>
+    </div>
+  </div>
+
+  <h2>What Happens at Startup</h2>
+  <p>When you run <code>npm run start:dev</code>, here's the sequence:</p>
+  <ol>
+    <li><code>bootstrap()</code> is called</li>
+    <li><code>NestFactory.create()</code> scans <code>AppModule</code></li>
+    <li>AppModule imports <code>TypeOrmModule</code> &rarr; Nest connects to PostgreSQL</li>
+    <li>AppModule imports <code>ServeStaticModule</code> &rarr; Nest serves the <code>public/</code> folder</li>
+    <li>AppModule imports <code>ItemsModule</code> &rarr; Nest scans its controllers/providers</li>
+    <li><code>ItemsController</code> is instantiated with <code>ItemsService</code> injected</li>
+    <li><code>ItemsService</code> is instantiated with the TypeORM <code>Repository&lt;Item&gt;</code> injected</li>
+    <li>All route decorators (<code>@Get</code>, <code>@Post</code>, etc.) are registered on the Express router</li>
+    <li><code>ValidationPipe</code> is registered globally</li>
+    <li>Express starts listening on port 3000</li>
+  </ol>
+
+  <div class="tip"><strong>Key takeaway:</strong> <code>main.ts</code> is intentionally minimal. All the real configuration lives in the module tree. This file just boots the engine and applies global settings.</div>
+
+  <div class="nav-footer">
+    <a href="/">&larr; Back to Guide</a>
+    <div class="spacer"></div>
+    <a href="walkthrough-modules.html">Next: Modules &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>

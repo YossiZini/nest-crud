@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: Service</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="walkthrough-dto.html">&larr; DTOs</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="walkthrough-controller.html">Next &rarr;</a>
+  </div>
+
+  <h1>Step 5: The Service<br><span>items.service.ts</span></h1>
+  <p>The service is where your <strong>business logic</strong> lives. It talks to the database via the TypeORM repository and exposes methods that the controller calls. It has no knowledge of HTTP &mdash; no <code>req</code>, no <code>res</code>, no status codes. Just pure data operations.</p>
+
+  <div class="file-label">src/items/items.service.ts</div>
+<pre><span class="kw">import</span> { Injectable, NotFoundException } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { InjectRepository } <span class="kw">from</span> <span class="str">'@nestjs/typeorm'</span>;
+<span class="kw">import</span> { Repository } <span class="kw">from</span> <span class="str">'typeorm'</span>;
+<span class="kw">import</span> { Item } <span class="kw">from</span> <span class="str">'./item.entity.js'</span>;
+<span class="kw">import</span> { CreateItemDto } <span class="kw">from</span> <span class="str">'./dto/create-item.dto.js'</span>;
+<span class="kw">import</span> { UpdateItemDto } <span class="kw">from</span> <span class="str">'./dto/update-item.dto.js'</span>;
+
+<span class="dec">@Injectable</span>()
+<span class="kw">export class</span> <span class="fn">ItemsService</span> {
+  <span class="kw">constructor</span>(
+    <span class="dec">@InjectRepository</span>(Item)
+    <span class="kw">private readonly</span> itemsRepository: Repository&lt;Item&gt;,
+  ) {}
+
+  <span class="fn">create</span>(createItemDto: CreateItemDto): Promise&lt;Item&gt; {
+    <span class="kw">const</span> item = <span class="kw">this</span>.itemsRepository.<span class="fn">create</span>(createItemDto);
+    <span class="kw">return this</span>.itemsRepository.<span class="fn">save</span>(item);
+  }
+
+  <span class="fn">findAll</span>(): Promise&lt;Item[]&gt; {
+    <span class="kw">return this</span>.itemsRepository.<span class="fn">find</span>();
+  }
+
+  <span class="kw">async</span> <span class="fn">findOne</span>(id: <span class="kw">number</span>): Promise&lt;Item&gt; {
+    <span class="kw">const</span> item = <span class="kw">await this</span>.itemsRepository.<span class="fn">findOneBy</span>({ id });
+    <span class="kw">if</span> (!item) {
+      <span class="kw">throw new</span> <span class="fn">NotFoundException</span>(<span class="str">`Item #${id} not found`</span>);
+    }
+    <span class="kw">return</span> item;
+  }
+
+  <span class="kw">async</span> <span class="fn">update</span>(id: <span class="kw">number</span>, updateItemDto: UpdateItemDto): Promise&lt;Item&gt; {
+    <span class="kw">const</span> item = <span class="kw">await this</span>.<span class="fn">findOne</span>(id);
+    Object.<span class="fn">assign</span>(item, updateItemDto);
+    <span class="kw">return this</span>.itemsRepository.<span class="fn">save</span>(item);
+  }
+
+  <span class="kw">async</span> <span class="fn">remove</span>(id: <span class="kw">number</span>): Promise&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">const</span> item = <span class="kw">await this</span>.<span class="fn">findOne</span>(id);
+    <span class="kw">await this</span>.itemsRepository.<span class="fn">remove</span>(item);
+  }
+}</pre>
+
+  <h2>The Class Setup</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>@Injectable()</strong></p>
+<pre><span class="dec">@Injectable</span>()
+<span class="kw">export class</span> <span class="fn">ItemsService</span> {</pre>
+      <p>This decorator tells Nest's DI container: "this class can be injected into other classes." Without it, trying to inject <code>ItemsService</code> into a controller would throw an error at startup. Every service, every repository, every custom provider needs this decorator.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>Constructor injection</strong></p>
+<pre><span class="kw">constructor</span>(
+  <span class="dec">@InjectRepository</span>(Item)
+  <span class="kw">private readonly</span> itemsRepository: Repository&lt;Item&gt;,
+) {}</pre>
+      <p>This is where DI happens. Let's unpack it:</p>
+      <ul>
+        <li><code>@InjectRepository(Item)</code> &mdash; tells Nest to inject the TypeORM repository for the <code>Item</code> entity</li>
+        <li><code>private readonly</code> &mdash; TypeScript shorthand that creates a class property and assigns it in one line</li>
+        <li><code>Repository&lt;Item&gt;</code> &mdash; a TypeORM generic class that provides all the database methods for the <code>Item</code> table</li>
+      </ul>
+      <p>You never call <code>new ItemsService()</code> yourself. Nest sees that <code>ItemsController</code> needs an <code>ItemsService</code>, which needs a <code>Repository&lt;Item&gt;</code>, and automatically creates and connects them.</p>
+      <div class="tip"><strong>Express equivalent:</strong>
+<pre><span class="cmt">// In Express, you'd manually wire this:</span>
+<span class="kw">const</span> pool = <span class="fn">require</span>(<span class="str">'../db'</span>);
+<span class="cmt">// Then use pool.query() in every function</span></pre>
+      Nest's DI removes this manual wiring. The repository comes pre-connected.</div>
+    </div>
+  </div>
+
+  <h2>The CRUD Methods</h2>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>create() &mdash; INSERT</strong></p>
+<pre><span class="fn">create</span>(createItemDto: CreateItemDto): Promise&lt;Item&gt; {
+  <span class="kw">const</span> item = <span class="kw">this</span>.itemsRepository.<span class="fn">create</span>(createItemDto);
+  <span class="kw">return this</span>.itemsRepository.<span class="fn">save</span>(item);
+}</pre>
+      <p>Two steps here:</p>
+      <ol>
+        <li><code>repository.create(dto)</code> &mdash; creates an <code>Item</code> instance in memory from the DTO. <strong>Does NOT touch the database yet.</strong> It's like <code>new Item()</code> with the DTO values assigned.</li>
+        <li><code>repository.save(item)</code> &mdash; actually inserts the row into PostgreSQL and returns the saved entity with the auto-generated <code>id</code>.</li>
+      </ol>
+      <p>The generated SQL is:</p>
+<pre><span class="kw">INSERT INTO</span> item (name, description)
+<span class="kw">VALUES</span> (<span class="str">'Widget'</span>, <span class="str">'A cool widget'</span>)
+<span class="kw">RETURNING</span> id, name, description;</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <p><strong>findAll() &mdash; SELECT *</strong></p>
+<pre><span class="fn">findAll</span>(): Promise&lt;Item[]&gt; {
+  <span class="kw">return this</span>.itemsRepository.<span class="fn">find</span>();
+}</pre>
+      <p>The simplest method. <code>repository.find()</code> with no arguments returns all rows. The generated SQL:</p>
+<pre><span class="kw">SELECT</span> * <span class="kw">FROM</span> item;</pre>
+      <p>You can pass options to filter: <code>.find({ where: { name: 'Widget' } })</code>, <code>.find({ order: { id: 'DESC' }, take: 10 })</code>, etc.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <p><strong>findOne() &mdash; SELECT by ID with error handling</strong></p>
+<pre><span class="kw">async</span> <span class="fn">findOne</span>(id: <span class="kw">number</span>): Promise&lt;Item&gt; {
+  <span class="kw">const</span> item = <span class="kw">await this</span>.itemsRepository.<span class="fn">findOneBy</span>({ id });
+  <span class="kw">if</span> (!item) {
+    <span class="kw">throw new</span> <span class="fn">NotFoundException</span>(<span class="str">`Item #${id} not found`</span>);
+  }
+  <span class="kw">return</span> item;
+}</pre>
+      <p><code>findOneBy({ id })</code> returns the matching row or <code>null</code>. If null, we throw a <code>NotFoundException</code> &mdash; a built-in Nest exception that automatically returns a <strong>404 response</strong>:</p>
+<pre><span class="cmt">// Automatic 404 response</span>
+{
+  <span class="str">"statusCode"</span>: <span class="num">404</span>,
+  <span class="str">"message"</span>: <span class="str">"Item #999 not found"</span>,
+  <span class="str">"error"</span>: <span class="str">"Not Found"</span>
+}</pre>
+      <div class="tip"><strong>Express equivalent:</strong>
+<pre><span class="kw">if</span> (!item) {
+  <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">404</span>).<span class="fn">json</span>({ error: <span class="str">'Not found'</span> });
+}</pre>
+      In Nest, you throw an exception and the framework handles the HTTP response. No <code>res</code> object needed.</div>
+      <p>This method is also reused by <code>update()</code> and <code>remove()</code> to verify the item exists before modifying it.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-content">
+      <p><strong>update() &mdash; UPDATE</strong></p>
+<pre><span class="kw">async</span> <span class="fn">update</span>(id: <span class="kw">number</span>, updateItemDto: UpdateItemDto): Promise&lt;Item&gt; {
+  <span class="kw">const</span> item = <span class="kw">await this</span>.<span class="fn">findOne</span>(id);
+  Object.<span class="fn">assign</span>(item, updateItemDto);
+  <span class="kw">return this</span>.itemsRepository.<span class="fn">save</span>(item);
+}</pre>
+      <p>Three steps:</p>
+      <ol>
+        <li><code>this.findOne(id)</code> &mdash; fetch the existing item (throws 404 if not found)</li>
+        <li><code>Object.assign(item, updateItemDto)</code> &mdash; merge the DTO's properties into the entity. Since <code>UpdateItemDto</code> fields are optional, only provided fields get overwritten</li>
+        <li><code>repository.save(item)</code> &mdash; because the entity already has an <code>id</code>, TypeORM performs an UPDATE instead of an INSERT</li>
+      </ol>
+      <p>If the client sends <code>{ "name": "Updated" }</code>, only the name changes. The description stays the same.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-content">
+      <p><strong>remove() &mdash; DELETE</strong></p>
+<pre><span class="kw">async</span> <span class="fn">remove</span>(id: <span class="kw">number</span>): Promise&lt;<span class="kw">void</span>&gt; {
+  <span class="kw">const</span> item = <span class="kw">await this</span>.<span class="fn">findOne</span>(id);
+  <span class="kw">await this</span>.itemsRepository.<span class="fn">remove</span>(item);
+}</pre>
+      <p>Fetches the item first (404 if missing), then deletes it. The return type is <code>Promise&lt;void&gt;</code> &mdash; nothing to return after deletion. The generated SQL:</p>
+<pre><span class="kw">DELETE FROM</span> item <span class="kw">WHERE</span> id = <span class="num">1</span>;</pre>
+    </div>
+  </div>
+
+  <h2>Key Design Decisions</h2>
+  <ul>
+    <li><strong>No HTTP concepts.</strong> The service doesn't know about requests, responses, or status codes. It throws <code>NotFoundException</code> (which Nest maps to 404), but it doesn't construct HTTP responses.</li>
+    <li><strong>Reuses findOne().</strong> Both <code>update()</code> and <code>remove()</code> call <code>findOne()</code> to verify the item exists. DRY, and consistent 404 handling.</li>
+    <li><strong>Typed with DTOs.</strong> The <code>create()</code> method takes <code>CreateItemDto</code>, not <code>any</code>. TypeScript ensures you can only pass validated data.</li>
+    <li><strong>Returns Promises.</strong> All methods are async, matching the reality that database operations are I/O-bound. Nest automatically awaits the returned Promise and sends the resolved value as the response body.</li>
+  </ul>
+
+  <div class="tip"><strong>Key takeaway:</strong> The service is a clean data layer with no HTTP knowledge. It receives typed DTOs, talks to the database via the repository, and throws Nest exceptions for error cases. The controller handles the HTTP part; the service handles the data part.</div>
+
+  <div class="nav-footer">
+    <a href="walkthrough-dto.html">&larr; DTOs</a>
+    <div class="spacer"></div>
+    <a href="walkthrough-controller.html">Next: Controller &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>

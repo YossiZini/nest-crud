@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough: Testing</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="walkthrough-controller.html">&larr; Controller</a>
+    <span class="title">Demo Walkthrough</span>
+    <a href="/">Back to Guide &rarr;</a>
+  </div>
+
+  <h1>Step 7: Testing<br><span>Unit Tests &amp; E2E Tests</span></h1>
+  <p>Nest's DI system makes testing straightforward: create a testing module, swap real dependencies with mocks, and test each layer in isolation. Our project has three test files &mdash; let's walk through each one in detail.</p>
+
+  <!-- ============================================== -->
+  <h2>Service Unit Tests</h2>
+  <p>The service talks to the database via the repository. In tests, we replace the real repository with a mock object so we can test the service logic without PostgreSQL.</p>
+
+  <div class="file-label">src/items/items.service.spec.ts</div>
+<pre><span class="kw">import</span> { Test, TestingModule } <span class="kw">from</span> <span class="str">'@nestjs/testing'</span>;
+<span class="kw">import</span> { getRepositoryToken } <span class="kw">from</span> <span class="str">'@nestjs/typeorm'</span>;
+<span class="kw">import</span> { Repository } <span class="kw">from</span> <span class="str">'typeorm'</span>;
+<span class="kw">import</span> { NotFoundException } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { ItemsService } <span class="kw">from</span> <span class="str">'./items.service'</span>;
+<span class="kw">import</span> { Item } <span class="kw">from</span> <span class="str">'./item.entity'</span>;</pre>
+
+  <h3>Setting Up the Testing Module</h3>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <p><strong>The mock data and mock repository</strong></p>
+<pre><span class="kw">const</span> mockItem: Item = { id: <span class="num">1</span>, name: <span class="str">'Test'</span>, description: <span class="str">'Desc'</span> };
+
+<span class="kw">const</span> mockRepository = {
+  create:    jest.<span class="fn">fn</span>().<span class="fn">mockReturnValue</span>(mockItem),
+  save:      jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(mockItem),
+  find:      jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>([mockItem]),
+  findOneBy: jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(mockItem),
+  remove:    jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(mockItem),
+};</pre>
+      <p>We create a fake repository object with the same methods the service calls. Each method is a Jest mock that returns predictable data. Notice:</p>
+      <ul>
+        <li><code>mockReturnValue</code> &mdash; for synchronous methods (<code>create()</code> returns an entity, not a Promise)</li>
+        <li><code>mockResolvedValue</code> &mdash; for async methods (returns a resolved Promise)</li>
+      </ul>
+      <div class="tip"><strong>Why mock the repository?</strong> We're testing the <em>service logic</em>, not the database. We want to verify that the service calls the right repository methods with the right arguments, handles null results correctly, etc. &mdash; without needing a real PostgreSQL instance.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <p><strong>Building the testing module</strong></p>
+<pre><span class="fn">beforeEach</span>(<span class="kw">async</span> () => {
+  <span class="kw">const</span> module: TestingModule = <span class="kw">await</span> Test.<span class="fn">createTestingModule</span>({
+    providers: [
+      ItemsService,
+      { provide: <span class="fn">getRepositoryToken</span>(Item), useValue: mockRepository },
+    ],
+  }).<span class="fn">compile</span>();
+
+  service = module.<span class="fn">get</span>&lt;ItemsService&gt;(ItemsService);
+  repo = module.<span class="fn">get</span>&lt;Repository&lt;Item&gt;&gt;(<span class="fn">getRepositoryToken</span>(Item));
+});</pre>
+      <p>This is the core Nest testing pattern. Let's break it down:</p>
+      <ol>
+        <li><code>Test.createTestingModule()</code> &mdash; creates a module just like <code>@Module()</code>, but for testing</li>
+        <li><code>providers: [ItemsService, ...]</code> &mdash; we include the real <code>ItemsService</code> (that's what we're testing)</li>
+        <li><code>{ provide: getRepositoryToken(Item), useValue: mockRepository }</code> &mdash; <strong>this is the swap</strong>. Instead of the real TypeORM repository, inject our mock. <code>getRepositoryToken(Item)</code> returns the same DI token that <code>@InjectRepository(Item)</code> uses</li>
+        <li><code>.compile()</code> &mdash; builds the module and creates all instances</li>
+        <li><code>module.get()</code> &mdash; retrieves instances from the DI container for use in tests</li>
+      </ol>
+      <div class="warn"><strong>Express equivalent:</strong> In Express, you'd typically have to restructure your code to accept dependencies as function parameters, or use a library like <code>proxyquire</code>/<code>jest.mock()</code> to stub <code>require()</code> calls. Nest's DI makes this swap trivial &mdash; no code changes needed.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <p><strong>Cleanup between tests</strong></p>
+<pre><span class="fn">afterEach</span>(() => jest.<span class="fn">clearAllMocks</span>());</pre>
+      <p>Resets all mock call counts and arguments between tests so they don't bleed into each other.</p>
+    </div>
+  </div>
+
+  <h3>The Test Cases</h3>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <p><strong>Testing create()</strong></p>
+<pre>it(<span class="str">'should create an item'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> dto = { name: <span class="str">'Test'</span>, description: <span class="str">'Desc'</span> };
+  <span class="kw">const</span> result = <span class="kw">await</span> service.<span class="fn">create</span>(dto);
+  <span class="fn">expect</span>(repo.create).<span class="fn">toHaveBeenCalledWith</span>(dto);
+  <span class="fn">expect</span>(repo.save).<span class="fn">toHaveBeenCalled</span>();
+  <span class="fn">expect</span>(result).<span class="fn">toEqual</span>(mockItem);
+});</pre>
+      <p>We verify three things:</p>
+      <ol>
+        <li>The service called <code>repository.create()</code> with the DTO</li>
+        <li>The service called <code>repository.save()</code> to persist it</li>
+        <li>The returned value matches what the repository returned</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <p><strong>Testing the 404 case</strong></p>
+<pre>it(<span class="str">'should throw NotFoundException'</span>, <span class="kw">async</span> () => {
+  mockRepository.findOneBy.<span class="fn">mockResolvedValueOnce</span>(<span class="kw">null</span>);
+  <span class="kw">await</span> <span class="fn">expect</span>(service.<span class="fn">findOne</span>(<span class="num">999</span>)).rejects.<span class="fn">toThrow</span>(NotFoundException);
+});</pre>
+      <p>Here we override the mock <strong>for one call only</strong> (<code>mockResolvedValueOnce</code>) to return <code>null</code>, simulating a missing item. Then we verify the service throws <code>NotFoundException</code>. This tests our error handling without touching the database.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-content">
+      <p><strong>Testing update()</strong></p>
+<pre>it(<span class="str">'should update an item'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> updated = { ...mockItem, name: <span class="str">'Updated'</span> };
+  mockRepository.save.<span class="fn">mockResolvedValueOnce</span>(updated);
+  <span class="kw">const</span> result = <span class="kw">await</span> service.<span class="fn">update</span>(<span class="num">1</span>, { name: <span class="str">'Updated'</span> });
+  <span class="fn">expect</span>(result.name).<span class="fn">toBe</span>(<span class="str">'Updated'</span>);
+});</pre>
+      <p>We mock <code>save()</code> to return an updated item and verify the result reflects the change.</p>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <h2>Controller Unit Tests</h2>
+  <p>The controller tests swap the real service with a mock, so we're only testing the controller's routing and delegation logic.</p>
+
+  <div class="file-label">src/items/items.controller.spec.ts</div>
+<pre><span class="kw">const</span> mockItem = { id: <span class="num">1</span>, name: <span class="str">'Test'</span>, description: <span class="str">'Desc'</span> };
+
+<span class="kw">const</span> mockService = {
+  create:  jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(mockItem),
+  findAll: jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>([mockItem]),
+  findOne: jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(mockItem),
+  update:  jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>({ ...mockItem, name: <span class="str">'Updated'</span> }),
+  remove:  jest.<span class="fn">fn</span>().<span class="fn">mockResolvedValue</span>(<span class="kw">undefined</span>),
+};</pre>
+
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-content">
+      <p><strong>Swapping the service</strong></p>
+<pre><span class="kw">const</span> module: TestingModule = <span class="kw">await</span> Test.<span class="fn">createTestingModule</span>({
+  controllers: [ItemsController],
+  providers: [{ provide: ItemsService, useValue: mockService }],
+}).<span class="fn">compile</span>();</pre>
+      <p>Same pattern as the service test, but this time:</p>
+      <ul>
+        <li>We include the real <code>ItemsController</code> (what we're testing)</li>
+        <li>We swap <code>ItemsService</code> with <code>mockService</code></li>
+      </ul>
+      <p>The controller has <code>constructor(private readonly itemsService: ItemsService)</code>. Nest injects our mock instead of the real service.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">8</div>
+    <div class="step-content">
+      <p><strong>Testing delegation</strong></p>
+<pre>it(<span class="str">'should create an item'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> dto = { name: <span class="str">'Test'</span>, description: <span class="str">'Desc'</span> };
+  <span class="fn">expect</span>(<span class="kw">await</span> controller.<span class="fn">create</span>(dto)).<span class="fn">toEqual</span>(mockItem);
+  <span class="fn">expect</span>(service.create).<span class="fn">toHaveBeenCalledWith</span>(dto);
+});</pre>
+      <p>We verify two things:</p>
+      <ol>
+        <li>The controller returns what the service returns (it's a pass-through)</li>
+        <li>The controller called the correct service method with the correct argument</li>
+      </ol>
+      <p>The controller tests are simpler than the service tests because the controller is a thin layer &mdash; it just delegates.</p>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <h2>E2E Tests</h2>
+  <p>End-to-end tests test the full stack: HTTP request &rarr; controller &rarr; service &rarr; database. They use a real PostgreSQL database (a test database) and make real HTTP calls via <code>supertest</code>.</p>
+
+  <div class="file-label">test/app.e2e-spec.ts</div>
+<pre><span class="kw">import</span> { Test, TestingModule } <span class="kw">from</span> <span class="str">'@nestjs/testing'</span>;
+<span class="kw">import</span> { INestApplication, ValidationPipe } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> request <span class="kw">from</span> <span class="str">'supertest'</span>;
+<span class="kw">import</span> { TypeOrmModule } <span class="kw">from</span> <span class="str">'@nestjs/typeorm'</span>;
+<span class="kw">import</span> { ItemsModule } <span class="kw">from</span> <span class="str">'../src/items/items.module.js'</span>;
+<span class="kw">import</span> { Item } <span class="kw">from</span> <span class="str">'../src/items/item.entity.js'</span>;</pre>
+
+  <div class="step">
+    <div class="step-num">9</div>
+    <div class="step-content">
+      <p><strong>Setting up the test app</strong></p>
+<pre><span class="fn">beforeAll</span>(<span class="kw">async</span> () => {
+  <span class="kw">const</span> moduleFixture: TestingModule = <span class="kw">await</span> Test.<span class="fn">createTestingModule</span>({
+    imports: [
+      TypeOrmModule.<span class="fn">forRoot</span>({
+        type: <span class="str">'postgres'</span>,
+        host: process.env.DB_HOST || <span class="str">'localhost'</span>,
+        port: <span class="fn">parseInt</span>(process.env.DB_PORT, <span class="num">10</span>) || <span class="num">5432</span>,
+        username: process.env.DB_USER || <span class="str">'postgres'</span>,
+        password: process.env.DB_PASS || <span class="str">'postgres'</span>,
+        database: process.env.DB_NAME || <span class="str">'nest_crud_test'</span>,
+        entities: [Item],
+        synchronize: <span class="kw">true</span>,
+        dropSchema: <span class="kw">true</span>,
+      }),
+      ItemsModule,
+    ],
+  }).<span class="fn">compile</span>();
+
+  app = moduleFixture.<span class="fn">createNestApplication</span>();
+  app.<span class="fn">useGlobalPipes</span>(<span class="kw">new</span> <span class="fn">ValidationPipe</span>({ whitelist: <span class="kw">true</span> }));
+  <span class="kw">await</span> app.<span class="fn">init</span>();
+});</pre>
+      <p>Key differences from unit tests:</p>
+      <ul>
+        <li><strong>Real database.</strong> We connect to <code>nest_crud_test</code> (a separate test database)</li>
+        <li><code>dropSchema: true</code> &mdash; drops all tables before tests run, ensuring a clean slate</li>
+        <li><code>createNestApplication()</code> &mdash; creates a full Nest app (with the Express server) that we can send HTTP requests to</li>
+        <li><code>useGlobalPipes()</code> &mdash; we need to add the validation pipe again because e2e tests create a fresh app instance</li>
+        <li><code>beforeAll</code> instead of <code>beforeEach</code> &mdash; we set up once because the tests run sequentially and build on each other (create, then read, then update, then delete)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">10</div>
+    <div class="step-content">
+      <p><strong>Testing the full CRUD flow</strong></p>
+<pre><span class="kw">let</span> createdId: <span class="kw">number</span>;
+
+it(<span class="str">'POST /items'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">request</span>(app.<span class="fn">getHttpServer</span>())
+    .<span class="fn">post</span>(<span class="str">'/items'</span>)
+    .<span class="fn">send</span>({ name: <span class="str">'Widget'</span>, description: <span class="str">'A test widget'</span> })
+    .<span class="fn">expect</span>(<span class="num">201</span>);
+
+  <span class="fn">expect</span>(res.body.name).<span class="fn">toBe</span>(<span class="str">'Widget'</span>);
+  createdId = res.body.id;
+});</pre>
+      <p><code>app.getHttpServer()</code> returns the underlying Express server instance. We pass it to <code>supertest</code>'s <code>request()</code> to make real HTTP calls. This is the exact same <code>supertest</code> you'd use in Express tests.</p>
+      <p>We save the <code>createdId</code> to use in subsequent tests (read, update, delete).</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">11</div>
+    <div class="step-content">
+      <p><strong>Testing the full lifecycle</strong></p>
+      <p>The remaining tests follow the CRUD flow in order:</p>
+<pre>it(<span class="str">'GET /items'</span>, ...)        <span class="cmt">// list all → expect 1 item</span>
+it(<span class="str">'GET /items/:id'</span>, ...)    <span class="cmt">// get by id → expect 'Widget'</span>
+it(<span class="str">'PUT /items/:id'</span>, ...)    <span class="cmt">// update name → expect 'Updated Widget'</span>
+it(<span class="str">'DELETE /items/:id'</span>, ...)  <span class="cmt">// delete → expect 200</span>
+it(<span class="str">'GET /items/:id → 404'</span>)   <span class="cmt">// verify it's gone → expect 404</span></pre>
+      <p>This tests the entire stack: HTTP &rarr; validation &rarr; controller &rarr; service &rarr; repository &rarr; PostgreSQL and back. The final test (404 after delete) verifies the delete actually worked.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">12</div>
+    <div class="step-content">
+      <p><strong>Cleanup</strong></p>
+<pre><span class="fn">afterAll</span>(<span class="kw">async</span> () => {
+  <span class="kw">await</span> app.<span class="fn">close</span>();
+});</pre>
+      <p>Closes the Nest app, which disconnects from the database and shuts down the Express server. Without this, the test process would hang.</p>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <h2>Running the Tests</h2>
+
+<pre><span class="cmt"># Unit tests (no database needed)</span>
+npm test
+
+<span class="cmt"># E2E tests (needs nest_crud_test database)</span>
+createdb nest_crud_test    <span class="cmt"># run once</span>
+npm run test:e2e</pre>
+
+  <h2>Testing Strategy Summary</h2>
+  <table>
+    <tr><th>Test Type</th><th>File</th><th>What it tests</th><th>Dependencies</th></tr>
+    <tr><td>Unit (Service)</td><td><code>items.service.spec.ts</code></td><td>Business logic, error handling</td><td>Mocked repository</td></tr>
+    <tr><td>Unit (Controller)</td><td><code>items.controller.spec.ts</code></td><td>Route delegation</td><td>Mocked service</td></tr>
+    <tr><td>E2E</td><td><code>app.e2e-spec.ts</code></td><td>Full HTTP flow + DB</td><td>Real PostgreSQL</td></tr>
+  </table>
+
+  <div class="tip"><strong>Key takeaway:</strong> Nest's testing story is built on DI. You create a testing module, swap real dependencies with mocks at the provider level, and test each layer independently. The same DI container that powers your app powers your tests &mdash; no hacks, no monkey-patching, no <code>jest.mock()</code> gymnastics.</div>
+
+  <div class="nav-footer">
+    <a href="walkthrough-controller.html">&larr; Controller</a>
+    <div class="spacer"></div>
+    <a href="/">Back to Guide &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>
